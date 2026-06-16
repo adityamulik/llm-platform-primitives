@@ -2,7 +2,7 @@
 
 import os
 import yaml
-from typing import Dict, Optional
+from typing import Dict
 
 
 # Load intent rules from YAML
