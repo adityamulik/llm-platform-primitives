@@ -1,4 +1,4 @@
-.PHONY: install run dev test clean help ollama-setup ollama-serve ollama-agent
+.PHONY: install run dev test clean clean-pycache help ollama-setup ollama-serve ollama-agent
 
 help:
 	@echo "Available targets:"
@@ -7,6 +7,7 @@ help:
 	@echo "  make dev           Install dependencies and run"
 	@echo "  make test          Run tests"
 	@echo "  make clean         Clean up temporary files"
+	@echo "  make clean-pycache Remove __pycache__ directories"
 	@echo ""
 	@echo "Ollama targets:"
 	@echo "  make ollama-setup  Pull and setup Llama 3.1 model"
@@ -16,7 +17,11 @@ help:
 install:
 	uv sync
 
-run:
+clean-pycache:
+	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+	find . -type d -name .pytest_cache -exec rm -rf {} + 2>/dev/null || true
+
+run: clean-pycache
 	uv run adk web
 
 dev: install run

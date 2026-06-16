@@ -1605,6 +1605,7 @@ dependencies = [
     { name = "google-auth" },
     { name = "google-genai" },
     { name = "litellm" },
+    { name = "pyyaml" },
 ]
 
 [package.metadata]
@@ -1613,6 +1614,7 @@ requires-dist = [
     { name = "google-auth" },
     { name = "google-genai" },
     { name = "litellm" },
+    { name = "pyyaml" },
 ]
 
 [[package]]

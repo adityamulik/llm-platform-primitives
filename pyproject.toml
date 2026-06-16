@@ -9,4 +9,5 @@ dependencies = [
     "google-genai",
     "google-adk[extensions]",
     "litellm",
+    "pyyaml",
 ]

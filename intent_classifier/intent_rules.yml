@@ -1,0 +1,67 @@
+agents:
+  docs_agent:
+    description: "Documentation specialist for guides, tutorials, and explanations"
+    keywords:
+      - "document"
+      - "documentation"
+      - "guide"
+      - "tutorial"
+      - "explain"
+      - "write doc"
+      - "api doc"
+      - "readme"
+      - "help text"
+      - "description"
+    weight: 1.0
+
+  codebase_agent:
+    description: "Code analysis specialist for architecture, patterns, and implementation"
+    keywords:
+      - "code"
+      - "analyze"
+      - "refactor"
+      - "review"
+      - "architecture"
+      - "pattern"
+      - "implementation"
+      - "snippet"
+      - "function"
+      - "class"
+      - "debug"
+      - "optimize"
+    weight: 1.0
+
+  research_agent:
+    description: "Research specialist for analysis, evaluation, and insights"
+    keywords:
+      - "research"
+      - "analyze"
+      - "investigate"
+      - "explore"
+      - "best practice"
+      - "study"
+      - "comparison"
+      - "evaluation"
+      - "assessment"
+      - "recommendation"
+      - "insights"
+    weight: 1.0
+
+  execution_agent:
+    description: "Execution specialist for building, implementing, and executing tasks"
+    keywords:
+      - "implement"
+      - "build"
+      - "create"
+      - "execute"
+      - "develop"
+      - "task"
+      - "action"
+      - "setup"
+      - "deploy"
+      - "run"
+      - "fix"
+      - "resolve"
+    weight: 1.0
+
+default_agent: "research_agent"
