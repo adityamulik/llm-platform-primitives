@@ -1,11 +1,23 @@
 from google.adk.agents import Agent, LlmAgent
 from google.adk.apps import App
 from google.adk.models.lite_llm import LiteLlm
+from google.adk.tools.mcp_tool.mcp_toolset import MCPToolset
+from mcp import StdioServerParameters
 from intent_classifier import classify_intent
 from prompt_registry import get_prompt
-from google.adk.tools.toolbox_toolset import ToolboxToolset
 
 OLLAMA_MODEL = "ollama_chat/llama3.1:latest"
+
+# Context7 MCP toolset — provides live library documentation via npx
+# Requires Node.js: https://context7.com
+_context7_toolset = MCPToolset(
+    connection_params=StdioServerParameters(
+        command="npx",
+        args=["-y", "@upstash/context7-mcp"],
+        env={"DEFAULT_MINIMUM_TOKENS": "10000"},
+    ),
+    tool_filter=["resolve-library-id", "get-library-docs"],
+)
 
 # Individual specialized agents
 docs_agent = LlmAgent(
@@ -14,6 +26,7 @@ docs_agent = LlmAgent(
         model=OLLAMA_MODEL,
     ),
     instruction=get_prompt("docs_agent"),
+    tools=[_context7_toolset],
 )
 
 codebase_agent = LlmAgent(
