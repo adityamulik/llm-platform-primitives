@@ -100,38 +100,6 @@ class PromptRegistry:
             raise KeyError(f"Prompt '{name}' not found in registry")
         return list(self._prompts[name].keys())
     
-    def get_latest_version(self, name: str) -> str:
-        """Get the latest version number of a prompt."""
-        if name not in self._prompts:
-            raise KeyError(f"Prompt '{name}' not found in registry")
-        return self._latest_versions[name]
-    
-    def delete_prompt(self, name: str) -> None:
-        """Delete all versions of a prompt."""
-        if name in self._prompts:
-            del self._prompts[name]
-            if name in self._latest_versions:
-                del self._latest_versions[name]
-    
-    def delete_prompt_version(self, name: str, version: str) -> None:
-        """Delete a specific version of a prompt."""
-        if name not in self._prompts:
-            raise KeyError(f"Prompt '{name}' not found in registry")
-        
-        if version not in self._prompts[name]:
-            raise KeyError(f"Version '{version}' not found for prompt '{name}'")
-        
-        del self._prompts[name][version]
-        
-        # Update latest version if we deleted it
-        if self._latest_versions.get(name) == version:
-            remaining_versions = list(self._prompts[name].keys())
-            if remaining_versions:
-                self._latest_versions[name] = remaining_versions[-1]
-            else:
-                del self._prompts[name]
-                del self._latest_versions[name]
-    
     def __repr__(self) -> str:
         """String representation of the registry."""
         prompt_count = len(self._prompts)
@@ -171,8 +139,3 @@ def list_prompts() -> List[str]:
 def list_versions(name: str) -> List[str]:
     """List all versions of a prompt."""
     return _registry.list_versions(name)
-
-
-def get_registry() -> PromptRegistry:
-    """Get the global registry instance."""
-    return _registry
