@@ -24,6 +24,9 @@ clean-pycache:
 run: clean-pycache
 	uv run adk web
 
+run-mcp: 
+	uv run python mcp_server/analytics_mcp.py
+
 dev: install run
 
 test:
