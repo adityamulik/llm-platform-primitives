@@ -1,15 +1,31 @@
 import logging
+import pathlib
+
 from google.adk.apps import App
 from google.adk.models.lite_llm import LiteLlm
+
+from google.adk.skills import load_skill_from_dir
+from google.adk.tools import skill_toolset
+
 from intent_classifier import classify_intent
 from prompt_registry import get_prompt
-from .custom_llm_agent import CustomLlmAgent
+from app.custom_llm_agent import CustomLlmAgent
 from app.agents.analytics_agents import ANALYTICS_AGENTS
+
 
 
 logger = logging.getLogger(__name__)
 
 OLLAMA_MODEL = "ollama_chat/llama3.1:latest"
+
+workflow_skill = load_skill_from_dir(
+    pathlib.Path(__file__).parent.parent / "skills" / "workflow-skill"
+)
+
+my_skill_toolset = skill_toolset.SkillToolset(
+    skills=[workflow_skill],
+    additional_tools=[classify_intent],
+)
 
 
 # Root agent that coordinates all specialists

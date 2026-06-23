@@ -1,9 +1,15 @@
 from app.custom_llm_agent import CustomLlmAgent
+from google.adk.models.lite_llm import LiteLlm
+from prompt_registry import get_prompt
+
+OLLAMA_MODEL = "ollama_chat/llama3.1:latest"
 
 BUSINESS_AGENTS = [
     CustomLlmAgent(
         id="agent_business_001",
         name="market_segmentation_analyst",
+        model=LiteLlm(model=OLLAMA_MODEL),
+        instruction=get_prompt("research_agent"),
         description="Performs market segmentation and customer analysis",
         category="business",
         specialization="Market Segmentation",
@@ -19,6 +25,8 @@ BUSINESS_AGENTS = [
     CustomLlmAgent(
         id="agent_business_002",
         name="revenue_forecaster",
+        model=LiteLlm(model=OLLAMA_MODEL),
+        instruction=get_prompt("research_agent"),
         description="Forecasts revenue and business metrics",
         category="business",
         specialization="Revenue Forecasting",
@@ -34,6 +42,8 @@ BUSINESS_AGENTS = [
     CustomLlmAgent(
         id="agent_business_003",
         name="product_roadmap_strategist",
+        model=LiteLlm(model=OLLAMA_MODEL),
+        instruction=get_prompt("research_agent"),
         description="Optimizes product roadmap and prioritization",
         category="business",
         specialization="Product Strategy",
@@ -49,6 +59,8 @@ BUSINESS_AGENTS = [
     CustomLlmAgent(
         id="agent_business_004",
         name="pricing_strategist",
+        model=LiteLlm(model=OLLAMA_MODEL),
+        instruction=get_prompt("research_agent"),
         description="Analyzes pricing and recommends strategies",
         category="business",
         specialization="Pricing",
@@ -64,6 +76,8 @@ BUSINESS_AGENTS = [
     CustomLlmAgent(
         id="agent_business_005",
         name="customer_journey_mapper",
+        model=LiteLlm(model=OLLAMA_MODEL),
+        instruction=get_prompt("research_agent"),
         description="Maps and optimizes customer journeys",
         category="business",
         specialization="Customer Experience",
@@ -79,6 +93,8 @@ BUSINESS_AGENTS = [
     CustomLlmAgent(
         id="agent_business_006",
         name="strategic_partnerships_manager",
+        model=LiteLlm(model=OLLAMA_MODEL),
+        instruction=get_prompt("research_agent"),
         description="Identifies and analyzes partnership opportunities",
         category="business",
         specialization="Partnerships",

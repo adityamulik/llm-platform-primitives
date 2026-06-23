@@ -1,9 +1,15 @@
 from app.custom_llm_agent import CustomLlmAgent
+from google.adk.models.lite_llm import LiteLlm
+from prompt_registry import get_prompt
+
+OLLAMA_MODEL = "ollama_chat/llama3.1:latest"
 
 RESEARCH_AGENTS = [
     CustomLlmAgent(
         id="agent_research_001",
         name="literature_reviewer",
+        model=LiteLlm(model=OLLAMA_MODEL),
+        instruction=get_prompt("research_agent"),
         description="Conducts comprehensive literature reviews",
         category="research",
         specialization="Literature Analysis",
@@ -19,6 +25,8 @@ RESEARCH_AGENTS = [
     CustomLlmAgent(
         id="agent_research_002",
         name="knowledge_graph_constructor",
+        model=LiteLlm(model=OLLAMA_MODEL),
+        instruction=get_prompt("research_agent"),
         description="Builds knowledge graphs from unstructured data",
         category="research",
         specialization="Knowledge Graphs",
@@ -34,6 +42,8 @@ RESEARCH_AGENTS = [
     CustomLlmAgent(
         id="agent_research_003",
         name="competitive_intelligence_agent",
+        model=LiteLlm(model=OLLAMA_MODEL),
+        instruction=get_prompt("research_agent"),
         description="Gathers and analyzes competitive intelligence",
         category="research",
         specialization="Competitive Analysis",
@@ -49,6 +59,8 @@ RESEARCH_AGENTS = [
     CustomLlmAgent(
         id="agent_research_004",
         name="hypothesis_generator",
+        model=LiteLlm(model=OLLAMA_MODEL),
+        instruction=get_prompt("research_agent"),
         description="Generates research hypotheses based on data",
         category="research",
         specialization="Hypothesis Development",
@@ -64,6 +76,8 @@ RESEARCH_AGENTS = [
     CustomLlmAgent(
         id="agent_research_005",
         name="experiment_designer",
+        model=LiteLlm(model=OLLAMA_MODEL),
+        instruction=get_prompt("research_agent"),
         description="Designs optimal experiments and studies",
         category="research",
         specialization="Research Design",
@@ -79,6 +93,8 @@ RESEARCH_AGENTS = [
     CustomLlmAgent(
         id="agent_research_006",
         name="meta_analysis_conductor",
+        model=LiteLlm(model=OLLAMA_MODEL),
+        instruction=get_prompt("research_agent"),
         description="Conducts meta-analyses and systematic reviews",
         category="research",
         specialization="Meta-Analysis",
@@ -94,6 +110,8 @@ RESEARCH_AGENTS = [
     CustomLlmAgent(
         id="agent_research_007",
         name="data_quality_assessor",
+        model=LiteLlm(model=OLLAMA_MODEL),
+        instruction=get_prompt("research_agent"),
         description="Assesses data quality and integrity",
         category="research",
         specialization="Data Quality",
@@ -109,6 +127,8 @@ RESEARCH_AGENTS = [
     CustomLlmAgent(
         id="agent_research_008",
         name="repository_citation_manager",
+        model=LiteLlm(model=OLLAMA_MODEL),
+        instruction=get_prompt("research_agent"),
         description="Manages institutional repositories and citations",
         category="research",
         specialization="Repository Management",

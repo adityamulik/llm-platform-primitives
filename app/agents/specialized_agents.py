@@ -1,9 +1,15 @@
 from app.custom_llm_agent import CustomLlmAgent
+from google.adk.models.lite_llm import LiteLlm
+from prompt_registry import get_prompt
+
+OLLAMA_MODEL = "ollama_chat/llama3.1:latest"
 
 SPECIALIZED_AGENTS = [
     CustomLlmAgent(
         id="agent_special_001",
         name="multi_domain_orchestrator",
+        model=LiteLlm(model=OLLAMA_MODEL),
+        instruction=get_prompt("root_agent"),
         description="Coordinates complex workflows across multiple domains",
         category="orchestration",
         specialization="Workflow Orchestration",
@@ -19,6 +25,8 @@ SPECIALIZED_AGENTS = [
     CustomLlmAgent(
         id="agent_special_002",
         name="executive_insights_dashboard",
+        model=LiteLlm(model=OLLAMA_MODEL),
+        instruction=get_prompt("execution_agent"),
         description="Provides executive-level insights and reporting",
         category="business",
         specialization="Executive Reporting",
@@ -34,6 +42,8 @@ SPECIALIZED_AGENTS = [
     CustomLlmAgent(
         id="agent_special_003",
         name="cross_functional_advisor",
+        model=LiteLlm(model=OLLAMA_MODEL),
+        instruction=get_prompt("execution_agent"),
         description="Provides advice across technical and business domains",
         category="advisory",
         specialization="Strategic Advisory",
@@ -49,6 +59,8 @@ SPECIALIZED_AGENTS = [
     CustomLlmAgent(
         id="agent_special_004",
         name="incident_response_coordinator",
+        model=LiteLlm(model=OLLAMA_MODEL),
+        instruction=get_prompt("execution_agent"),
         description="Coordinates response to incidents across systems",
         category="operations",
         specialization="Incident Management",

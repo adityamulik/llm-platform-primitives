@@ -1,10 +1,16 @@
 
 from app.custom_llm_agent import CustomLlmAgent
+from google.adk.models.lite_llm import LiteLlm
+from prompt_registry import get_prompt
+
+OLLAMA_MODEL = "ollama_chat/llama3.1:latest"
 
 DEVOPS_AGENTS = [
     CustomLlmAgent(
         id="agent_devops_001",
         name="system_health_monitor",
+        model=LiteLlm(model=OLLAMA_MODEL),
+        instruction=get_prompt("execution_agent"),
         description="Monitors system health and generates alerts",
         category="devops",
         specialization="System Monitoring",
@@ -20,6 +26,8 @@ DEVOPS_AGENTS = [
     CustomLlmAgent(
         id="agent_devops_002",
         name="container_orchestration_manager",
+        model=LiteLlm(model=OLLAMA_MODEL),
+        instruction=get_prompt("execution_agent"),
         description="Manages containerized deployments and scaling",
         category="devops",
         specialization="Container Management",
@@ -35,6 +43,8 @@ DEVOPS_AGENTS = [
     CustomLlmAgent(
         id="agent_devops_003",
         name="infrastructure_code_validator",
+        model=LiteLlm(model=OLLAMA_MODEL),
+        instruction=get_prompt("execution_agent"),
         description="Validates Infrastructure as Code configurations",
         category="devops",
         specialization="IaC Validation",
@@ -50,6 +60,8 @@ DEVOPS_AGENTS = [
     CustomLlmAgent(
         id="agent_devops_004",
         name="disaster_recovery_planner",
+        model=LiteLlm(model=OLLAMA_MODEL),
+        instruction=get_prompt("execution_agent"),
         description="Plans and validates disaster recovery procedures",
         category="devops",
         specialization="DR & Business Continuity",
@@ -65,6 +77,8 @@ DEVOPS_AGENTS = [
     CustomLlmAgent(
         id="agent_devops_005",
         name="network_operations_engineer",
+        model=LiteLlm(model=OLLAMA_MODEL),
+        instruction=get_prompt("execution_agent"),
         description="Analyzes network traffic and configuration",
         category="devops",
         specialization="Network Operations",
@@ -80,6 +94,8 @@ DEVOPS_AGENTS = [
     CustomLlmAgent(
         id="agent_devops_006",
         name="cost_optimization_analyst",
+        model=LiteLlm(model=OLLAMA_MODEL),
+        instruction=get_prompt("execution_agent"),
         description="Analyzes cloud costs and recommends optimizations",
         category="devops",
         specialization="Cost Management",
@@ -95,6 +111,8 @@ DEVOPS_AGENTS = [
     CustomLlmAgent(
         id="agent_devops_007",
         name="security_compliance_auditor",
+        model=LiteLlm(model=OLLAMA_MODEL),
+        instruction=get_prompt("execution_agent"),
         description="Audits infrastructure security and compliance",
         category="devops",
         specialization="Security Compliance",
@@ -110,6 +128,8 @@ DEVOPS_AGENTS = [
     CustomLlmAgent(
         id="agent_devops_008",
         name="database_replication_manager",
+        model=LiteLlm(model=OLLAMA_MODEL),
+        instruction=get_prompt("execution_agent"),
         description="Manages database replication and synchronization",
         category="devops",
         specialization="Database Operations",

@@ -3,18 +3,18 @@ import logging
 from app.custom_llm_agent import CustomLlmAgent
 from google.adk.models.lite_llm import LiteLlm
 
+from prompt_registry import get_prompt
+
 logger = logging.getLogger(__name__)
 
 OLLAMA_MODEL = "ollama_chat/llama3.1:latest"
-
-from prompt_registry import get_prompt
 
 ANALYTICS_AGENTS = [
     CustomLlmAgent(
         id="agent_analytics_001",
         name="data_statistician",
         model=LiteLlm(model=OLLAMA_MODEL),
-        instruction=get_prompt("docs_agent"),
+        instruction=get_prompt("data_statistician"),
         # tools=[_context7_toolset],
         description="Analyzes data distributions, correlations, and statistical properties",
         category="analytics",
@@ -32,7 +32,7 @@ ANALYTICS_AGENTS = [
         id="agent_analytics_002",
         name="time_series_forecaster",
         model=LiteLlm(model=OLLAMA_MODEL),
-        instruction=get_prompt("docs_agent"),
+        instruction=get_prompt("time_series_forecaster"),
         # tools=[_context7_toolset],
         description="Forecasts future trends and patterns in time series data",
         category="analytics",
@@ -47,10 +47,10 @@ ANALYTICS_AGENTS = [
         max_conversation_turns=12
     ),
     CustomLlmAgent(
-        # id="agent_analytics_003",
+        id="agent_analytics_003",
         name="data_clustering_specialist",
         model=LiteLlm(model=OLLAMA_MODEL),
-        instruction=get_prompt("docs_agent"),
+        instruction=get_prompt("data_clustering_specialist"),
         # tools=[_context7_toolset],
         description="Segments data into meaningful clusters and groups",
         category="analytics",
@@ -65,10 +65,10 @@ ANALYTICS_AGENTS = [
         max_conversation_turns=10
     ),
     CustomLlmAgent(
-        # id="agent_analytics_004",
+        id="agent_analytics_004",
         name="comparative_analytics_expert",
         model=LiteLlm(model=OLLAMA_MODEL),
-        instruction=get_prompt("docs_agent"),
+        instruction=get_prompt("comparative_analytics_expert"),
     # tools=[_context7_toolset],
         description="Compares datasets and identifies key differences and patterns",
         category="analytics",
@@ -83,10 +83,10 @@ ANALYTICS_AGENTS = [
         max_conversation_turns=14
     ),
     CustomLlmAgent(
-        # id="agent_analytics_005",
+        id="agent_analytics_005",
         name="business_intelligence_analyst",
         model=LiteLlm(model=OLLAMA_MODEL),
-        instruction=get_prompt("docs_agent"),
+        instruction=get_prompt("business_intelligence_analyst"),
     # tools=[_context7_toolset],
         description="Generates comprehensive analytics reports and business insights",
         category="analytics",
@@ -101,10 +101,10 @@ ANALYTICS_AGENTS = [
         max_conversation_turns=20
     ),
     CustomLlmAgent(
-        # id="agent_analytics_006",
+        id="agent_analytics_006",
         name="regression_analysis_specialist",
         model=LiteLlm(model=OLLAMA_MODEL),
-        instruction=get_prompt("docs_agent"),
+        instruction=get_prompt("regression_analysis_specialist"),
         # tools=[_context7_toolset],
         description="Performs regression analysis and predictive modeling",
         category="analytics",
@@ -119,10 +119,10 @@ ANALYTICS_AGENTS = [
         max_conversation_turns=12
     ),
     CustomLlmAgent(
-        # id="agent_analytics_007",
+        id="agent_analytics_007",
         name="matrix_operations_specialist",
         model=LiteLlm(model=OLLAMA_MODEL),
-        instruction=get_prompt("docs_agent"),
+        instruction=get_prompt("matrix_operations_specialist"),
         # tools=[_context7_toolset],
         description="Performs complex matrix operations and linear algebra computations",
         category="analytics",
@@ -136,10 +136,10 @@ ANALYTICS_AGENTS = [
         max_conversation_turns=8
     ),
     CustomLlmAgent(
-        # id="agent_analytics_008",
+        id="agent_analytics_008",
         name="anomaly_detection_specialist",
         model=LiteLlm(model=OLLAMA_MODEL),
-        instruction=get_prompt("docs_agent"),
+        instruction=get_prompt("anomaly_detection_specialist"),
     # tools=[_context7_toolset],
         description="Detects statistical anomalies and outliers in data",
         category="analytics",
@@ -154,10 +154,10 @@ ANALYTICS_AGENTS = [
         max_conversation_turns=10
     ),
     CustomLlmAgent(
-        # id="agent_analytics_009",
+        id="agent_analytics_009",
         name="data_normalization_expert",
         model=LiteLlm(model=OLLAMA_MODEL),
-        instruction=get_prompt("docs_agent"),
+        instruction=get_prompt("data_normalization_expert"),
         # tools=[_context7_toolset],
         description="Normalizes and scales data for machine learning and analysis",
         category="analytics",
@@ -171,10 +171,10 @@ ANALYTICS_AGENTS = [
         max_conversation_turns=8
     ),
     CustomLlmAgent(
-        # id="agent_analytics_010",
+        id="agent_analytics_010",
         name="advanced_analytics_architect",
         model=LiteLlm(model=OLLAMA_MODEL),
-        instruction=get_prompt("docs_agent"),
+        instruction=get_prompt("advanced_analytics_architect"),
         # tools=[_context7_toolset],
         description="Designs and orchestrates complex analytical workflows",
         category="analytics",

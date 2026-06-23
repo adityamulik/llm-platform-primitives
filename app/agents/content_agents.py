@@ -1,9 +1,15 @@
 from app.custom_llm_agent import CustomLlmAgent
+from google.adk.models.lite_llm import LiteLlm
+from prompt_registry import get_prompt
+
+OLLAMA_MODEL = "ollama_chat/llama3.1:latest"
 
 CONTENT_AGENTS = [
     CustomLlmAgent(
         id="agent_content_001",
         name="blog_content_creator",
+        model=LiteLlm(model=OLLAMA_MODEL),
+        instruction=get_prompt("execution_agent"),
         description="Creates SEO-optimized blog post content",
         category="content",
         specialization="Blog Writing",
@@ -18,6 +24,8 @@ CONTENT_AGENTS = [
     CustomLlmAgent(
         id="agent_content_002",
         name="sentiment_analyzer",
+        model=LiteLlm(model=OLLAMA_MODEL),
+        instruction=get_prompt("execution_agent"),
         description="Analyzes sentiment and emotional tone of content",
         category="content",
         specialization="Sentiment Analysis",
@@ -32,6 +40,8 @@ CONTENT_AGENTS = [
     CustomLlmAgent(
         id="agent_content_003",
         name="content_summarizer",
+        model=LiteLlm(model=OLLAMA_MODEL),
+        instruction=get_prompt("execution_agent"),
         description="Summarizes long-form content efficiently",
         category="content",
         specialization="Text Summarization",
@@ -46,6 +56,8 @@ CONTENT_AGENTS = [
     CustomLlmAgent(
         id="agent_content_004",
         name="grammar_spell_checker",
+        model=LiteLlm(model=OLLAMA_MODEL),
+        instruction=get_prompt("execution_agent"),
         description="Checks grammar, spelling, and writing quality",
         category="content",
         specialization="Proofreading",
@@ -60,6 +72,8 @@ CONTENT_AGENTS = [
     CustomLlmAgent(
         id="agent_content_005",
         name="plagiarism_detector",
+        model=LiteLlm(model=OLLAMA_MODEL),
+        instruction=get_prompt("execution_agent"),
         description="Detects plagiarism and checks content originality",
         category="content",
         specialization="Originality Checking",
@@ -75,6 +89,8 @@ CONTENT_AGENTS = [
     CustomLlmAgent(
         id="agent_content_006",
         name="translator",
+        model=LiteLlm(model=OLLAMA_MODEL),
+        instruction=get_prompt("execution_agent"),
         description="Translates content between languages",
         category="content",
         specialization="Translation",
@@ -90,6 +106,8 @@ CONTENT_AGENTS = [
     CustomLlmAgent(
         id="agent_content_007",
         name="content_strategist",
+        model=LiteLlm(model=OLLAMA_MODEL),
+        instruction=get_prompt("execution_agent"),
         description="Develops content strategy and identifies gaps",
         category="content",
         specialization="Content Strategy",
@@ -105,6 +123,8 @@ CONTENT_AGENTS = [
     CustomLlmAgent(
         id="agent_content_008",
         name="voice_tone_specialist",
+        model=LiteLlm(model=OLLAMA_MODEL),
+        instruction=get_prompt("execution_agent"),
         description="Analyzes and maintains consistent voice and tone",
         category="content",
         specialization="Brand Voice",

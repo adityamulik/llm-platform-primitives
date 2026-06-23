@@ -1,67 +1,624 @@
 agents:
-  docs_agent:
-    description: "Documentation specialist for guides, tutorials, and explanations"
+  # Analytics Agents (10)
+  data_statistician:
+    description: "Analyzes data distributions, correlations, and statistical properties"
     keywords:
-      - "document"
-      - "documentation"
-      - "guide"
-      - "tutorial"
-      - "explain"
-      - "write doc"
-      - "api doc"
-      - "readme"
-      - "help text"
-      - "description"
+      - "statistics"
+      - "distribution"
+      - "correlation"
+      - "analyze data"
+      - "statistical analysis"
+      - "hypothesis testing"
     weight: 1.0
 
-  codebase_agent:
-    description: "Code analysis specialist for architecture, patterns, and implementation"
+  time_series_forecaster:
+    description: "Forecasts future trends and patterns in time series data"
     keywords:
-      - "code"
-      - "analyze"
-      - "refactor"
-      - "review"
-      - "architecture"
-      - "pattern"
-      - "implementation"
-      - "snippet"
-      - "function"
-      - "class"
-      - "debug"
-      - "optimize"
+      - "forecast"
+      - "predict"
+      - "trend"
+      - "time series"
+      - "seasonal"
+      - "projection"
     weight: 1.0
 
-  research_agent:
-    description: "Research specialist for analysis, evaluation, and insights"
+  data_clustering_specialist:
+    description: "Segments data into meaningful clusters and groups"
     keywords:
-      - "research"
-      - "analyze"
-      - "investigate"
-      - "explore"
-      - "best practice"
-      - "study"
+      - "cluster"
+      - "segment"
+      - "group"
+      - "segmentation"
+      - "clustering"
+      - "customer segment"
+    weight: 1.0
+
+  comparative_analytics_expert:
+    description: "Compares datasets and identifies key differences and patterns"
+    keywords:
+      - "compare"
       - "comparison"
-      - "evaluation"
-      - "assessment"
-      - "recommendation"
-      - "insights"
+      - "difference"
+      - "A/B test"
+      - "benchmark"
+      - "contrast"
     weight: 1.0
 
-  execution_agent:
-    description: "Execution specialist for building, implementing, and executing tasks"
+  business_intelligence_analyst:
+    description: "Generates comprehensive analytics reports and business insights"
     keywords:
-      - "implement"
-      - "build"
-      - "create"
-      - "execute"
-      - "develop"
-      - "task"
-      - "action"
-      - "setup"
-      - "deploy"
-      - "run"
-      - "fix"
-      - "resolve"
+      - "business intelligence"
+      - "BI"
+      - "report"
+      - "dashboard"
+      - "KPI"
+      - "insight"
+      - "metrics"
     weight: 1.0
 
-default_agent: "research_agent"
+  regression_analysis_specialist:
+    description: "Performs regression analysis and predictive modeling"
+    keywords:
+      - "regression"
+      - "prediction"
+      - "model"
+      - "linear"
+      - "correlation"
+      - "coefficient"
+    weight: 1.0
+
+  matrix_operations_specialist:
+    description: "Performs complex matrix operations and linear algebra computations"
+    keywords:
+      - "matrix"
+      - "linear algebra"
+      - "transformation"
+      - "eigen"
+      - "decomposition"
+      - "tensor"
+    weight: 1.0
+
+  anomaly_detection_specialist:
+    description: "Detects statistical anomalies and outliers in data"
+    keywords:
+      - "anomaly"
+      - "outlier"
+      - "detect"
+      - "unusual"
+      - "fraud"
+      - "abnormal"
+    weight: 1.0
+
+  data_normalization_expert:
+    description: "Normalizes and scales data for machine learning and analysis"
+    keywords:
+      - "normalize"
+      - "scale"
+      - "standardize"
+      - "preprocessing"
+      - "transform"
+      - "standardization"
+    weight: 1.0
+
+  advanced_analytics_architect:
+    description: "Designs and orchestrates complex analytical workflows"
+    keywords:
+      - "analytics architecture"
+      - "workflow design"
+      - "pipeline"
+      - "orchestrate"
+      - "complex analysis"
+    weight: 1.0
+
+  # Development Agents (10)
+  code_quality_reviewer:
+    description: "Reviews code for quality, complexity, and best practices"
+    keywords:
+      - "code review"
+      - "quality"
+      - "best practice"
+      - "code analysis"
+      - "complexity"
+    weight: 1.0
+
+  security_vulnerability_scanner:
+    description: "Scans code for security vulnerabilities and compliance issues"
+    keywords:
+      - "security"
+      - "vulnerability"
+      - "scan"
+      - "compliance"
+      - "OWASP"
+      - "threat"
+    weight: 1.0
+
+  test_coverage_analyzer:
+    description: "Analyzes test coverage and recommends test improvements"
+    keywords:
+      - "test coverage"
+      - "testing"
+      - "unit test"
+      - "test"
+      - "coverage"
+      - "QA"
+    weight: 1.0
+
+  performance_profiler:
+    description: "Profiles code performance and identifies bottlenecks"
+    keywords:
+      - "performance"
+      - "profiling"
+      - "bottleneck"
+      - "optimization"
+      - "speed"
+      - "efficiency"
+    weight: 1.0
+
+  api_documentation_specialist:
+    description: "Generates comprehensive API documentation from code"
+    keywords:
+      - "API documentation"
+      - "API doc"
+      - "documentation"
+      - "swagger"
+      - "OpenAPI"
+      - "spec"
+    weight: 1.0
+
+  refactoring_strategist:
+    description: "Suggests and plans code refactoring improvements"
+    keywords:
+      - "refactor"
+      - "refactoring"
+      - "clean code"
+      - "improve"
+      - "reorganize"
+      - "code restructure"
+    weight: 1.0
+
+  dependency_manager:
+    description: "Manages dependencies and checks for outdated packages"
+    keywords:
+      - "dependency"
+      - "package"
+      - "version"
+      - "upgrade"
+      - "library"
+      - "requirements"
+    weight: 1.0
+
+  git_analytics_engineer:
+    description: "Analyzes git history and development patterns"
+    keywords:
+      - "git"
+      - "commit"
+      - "version control"
+      - "changelog"
+      - "contributor"
+      - "history"
+    weight: 1.0
+
+  database_schema_architect:
+    description: "Analyzes and optimizes database schemas"
+    keywords:
+      - "database"
+      - "schema"
+      - "SQL"
+      - "database design"
+      - "table"
+      - "index"
+    weight: 1.0
+
+  api_contract_validator:
+    description: "Validates API contracts and specifications"
+    keywords:
+      - "API contract"
+      - "validation"
+      - "contract"
+      - "API spec"
+      - "interface"
+    weight: 1.0
+
+  # DevOps Agents (8)
+  system_health_monitor:
+    description: "Monitors system health and performance metrics"
+    keywords:
+      - "monitoring"
+      - "health"
+      - "system metrics"
+      - "alert"
+      - "infrastructure"
+    weight: 1.0
+
+  container_orchestration_manager:
+    description: "Manages containerized applications and orchestration"
+    keywords:
+      - "container"
+      - "docker"
+      - "kubernetes"
+      - "orchestration"
+      - "deployment"
+    weight: 1.0
+
+  infrastructure_code_validator:
+    description: "Validates infrastructure as code"
+    keywords:
+      - "infrastructure code"
+      - "IaC"
+      - "terraform"
+      - "validation"
+      - "configuration"
+    weight: 1.0
+
+  disaster_recovery_planner:
+    description: "Plans and implements disaster recovery strategies"
+    keywords:
+      - "disaster recovery"
+      - "backup"
+      - "recovery"
+      - "resilience"
+      - "failover"
+    weight: 1.0
+
+  network_operations_engineer:
+    description: "Manages network infrastructure and operations"
+    keywords:
+      - "network"
+      - "networking"
+      - "infrastructure"
+      - "connectivity"
+      - "routing"
+    weight: 1.0
+
+  cost_optimization_analyst:
+    description: "Analyzes and optimizes infrastructure costs"
+    keywords:
+      - "cost optimization"
+      - "cost"
+      - "budget"
+      - "efficiency"
+      - "resource"
+    weight: 1.0
+
+  security_compliance_auditor:
+    description: "Audits security and compliance requirements"
+    keywords:
+      - "security audit"
+      - "compliance"
+      - "audit"
+      - "standards"
+      - "policy"
+    weight: 1.0
+
+  database_replication_manager:
+    description: "Manages database replication and backup strategies"
+    keywords:
+      - "database replication"
+      - "replication"
+      - "backup"
+      - "data sync"
+      - "high availability"
+    weight: 1.0
+
+  # Content Agents (8)
+  blog_content_creator:
+    description: "Creates high-quality blog content and articles"
+    keywords:
+      - "blog"
+      - "content creation"
+      - "article"
+      - "writing"
+      - "post"
+    weight: 1.0
+
+  sentiment_analyzer:
+    description: "Analyzes sentiment in text and content"
+    keywords:
+      - "sentiment analysis"
+      - "sentiment"
+      - "emotion"
+      - "analyze text"
+      - "tone"
+    weight: 1.0
+
+  content_summarizer:
+    description: "Summarizes large documents and content"
+    keywords:
+      - "summarize"
+      - "summary"
+      - "abstract"
+      - "condense"
+      - "overview"
+    weight: 1.0
+
+  grammar_spell_checker:
+    description: "Checks grammar and spelling in content"
+    keywords:
+      - "grammar"
+      - "spelling"
+      - "spell check"
+      - "edit"
+      - "proofread"
+    weight: 1.0
+
+  plagiarism_detector:
+    description: "Detects plagiarism and content duplication"
+    keywords:
+      - "plagiarism"
+      - "duplicate"
+      - "uniqueness"
+      - "originality"
+      - "detect copy"
+    weight: 1.0
+
+  translator:
+    description: "Translates content between languages"
+    keywords:
+      - "translate"
+      - "translation"
+      - "language"
+      - "localize"
+      - "multilingual"
+    weight: 1.0
+
+  content_strategist:
+    description: "Develops content strategy and planning"
+    keywords:
+      - "content strategy"
+      - "strategy"
+      - "planning"
+      - "content plan"
+      - "roadmap"
+    weight: 1.0
+
+  voice_tone_specialist:
+    description: "Ensures consistent voice and tone in content"
+    keywords:
+      - "tone"
+      - "voice"
+      - "brand"
+      - "consistency"
+      - "style guide"
+    weight: 1.0
+
+  # Research Agents (8)
+  literature_reviewer:
+    description: "Reviews and summarizes academic literature"
+    keywords:
+      - "literature review"
+      - "research"
+      - "academic"
+      - "paper"
+      - "study"
+    weight: 1.0
+
+  knowledge_graph_constructor:
+    description: "Constructs knowledge graphs from data"
+    keywords:
+      - "knowledge graph"
+      - "graph"
+      - "structure"
+      - "relationships"
+      - "ontology"
+    weight: 1.0
+
+  competitive_intelligence_agent:
+    description: "Gathers and analyzes competitive intelligence"
+    keywords:
+      - "competitive analysis"
+      - "competitor"
+      - "market intelligence"
+      - "competitor analysis"
+    weight: 1.0
+
+  hypothesis_generator:
+    description: "Generates research hypotheses and theories"
+    keywords:
+      - "hypothesis"
+      - "theory"
+      - "conjecture"
+      - "assumption"
+      - "generate ideas"
+    weight: 1.0
+
+  experiment_designer:
+    description: "Designs experimental protocols and methodologies"
+    keywords:
+      - "experiment design"
+      - "methodology"
+      - "protocol"
+      - "experimental"
+      - "test design"
+    weight: 1.0
+
+  meta_analysis_conductor:
+    description: "Conducts meta-analysis of research studies"
+    keywords:
+      - "meta-analysis"
+      - "synthesis"
+      - "review"
+      - "aggregate"
+      - "combine studies"
+    weight: 1.0
+
+  data_quality_assessor:
+    description: "Assesses and improves data quality"
+    keywords:
+      - "data quality"
+      - "quality"
+      - "validation"
+      - "data cleansing"
+      - "accuracy"
+    weight: 1.0
+
+  repository_citation_manager:
+    description: "Manages citations and research repositories"
+    keywords:
+      - "citation"
+      - "reference"
+      - "bibliography"
+      - "repository"
+      - "source"
+    weight: 1.0
+
+  # ML Agents (6)
+  model_training_orchestrator:
+    description: "Orchestrates machine learning model training"
+    keywords:
+      - "model training"
+      - "machine learning"
+      - "ML"
+      - "training"
+      - "neural network"
+    weight: 1.0
+
+  hyperparameter_tuner:
+    description: "Tunes hyperparameters for machine learning models"
+    keywords:
+      - "hyperparameter"
+      - "tuning"
+      - "optimization"
+      - "parameter"
+      - "grid search"
+    weight: 1.0
+
+  model_interpreter:
+    description: "Interprets and explains machine learning models"
+    keywords:
+      - "interpretability"
+      - "explain"
+      - "model explanation"
+      - "SHAP"
+      - "feature importance"
+    weight: 1.0
+
+  data_augmentation_specialist:
+    description: "Augments training data for model improvement"
+    keywords:
+      - "data augmentation"
+      - "augmentation"
+      - "synthetic data"
+      - "data generation"
+    weight: 1.0
+
+  model_ensemble_builder:
+    description: "Builds ensemble models for improved predictions"
+    keywords:
+      - "ensemble"
+      - "model ensemble"
+      - "voting"
+      - "stacking"
+      - "boosting"
+    weight: 1.0
+
+  ml_operations_manager:
+    description: "Manages MLOps pipelines and model deployment"
+    keywords:
+      - "MLOps"
+      - "deployment"
+      - "model serving"
+      - "production"
+      - "pipeline"
+    weight: 1.0
+
+  # Business Agents (6)
+  market_segmentation_analyst:
+    description: "Analyzes market segments and customer groups"
+    keywords:
+      - "market segmentation"
+      - "segmentation"
+      - "market analysis"
+      - "customer segment"
+    weight: 1.0
+
+  revenue_forecaster:
+    description: "Forecasts revenue and financial metrics"
+    keywords:
+      - "revenue forecast"
+      - "forecast"
+      - "financial"
+      - "revenue"
+      - "projection"
+    weight: 1.0
+
+  product_roadmap_strategist:
+    description: "Plans and strategizes product roadmaps"
+    keywords:
+      - "product roadmap"
+      - "product strategy"
+      - "roadmap"
+      - "planning"
+      - "product development"
+    weight: 1.0
+
+  pricing_strategist:
+    description: "Develops pricing strategies and models"
+    keywords:
+      - "pricing strategy"
+      - "pricing"
+      - "price"
+      - "monetization"
+      - "business model"
+    weight: 1.0
+
+  customer_journey_mapper:
+    description: "Maps customer journeys and touchpoints"
+    keywords:
+      - "customer journey"
+      - "journey mapping"
+      - "customer experience"
+      - "UX"
+      - "touchpoint"
+    weight: 1.0
+
+  strategic_partnerships_manager:
+    description: "Manages strategic partnerships and alliances"
+    keywords:
+      - "partnership"
+      - "alliance"
+      - "collaboration"
+      - "partner"
+      - "strategic partnership"
+    weight: 1.0
+
+  # Specialized Agents (4)
+  multi_domain_orchestrator:
+    description: "Orchestrates across multiple domains and agents"
+    keywords:
+      - "orchestration"
+      - "coordination"
+      - "multi-domain"
+      - "complex task"
+    weight: 1.0
+
+  executive_insights_dashboard:
+    description: "Provides executive-level insights and dashboards"
+    keywords:
+      - "executive"
+      - "dashboard"
+      - "insights"
+      - "summary"
+      - "C-level"
+    weight: 1.0
+
+  cross_functional_advisor:
+    description: "Advises on cross-functional collaboration"
+    keywords:
+      - "cross-functional"
+      - "collaboration"
+      - "teamwork"
+      - "coordination"
+      - "integration"
+    weight: 1.0
+
+  incident_response_coordinator:
+    description: "Coordinates incident response and resolution"
+    keywords:
+      - "incident response"
+      - "incident"
+      - "crisis"
+      - "emergency"
+      - "resolution"
+    weight: 1.0
+
+default_agent: "multi_domain_orchestrator"

@@ -1,9 +1,15 @@
 from app.custom_llm_agent import CustomLlmAgent
+from google.adk.models.lite_llm import LiteLlm
+from prompt_registry import get_prompt
+
+OLLAMA_MODEL = "ollama_chat/llama3.1:latest"
 
 ML_AGENTS = [
     CustomLlmAgent(
         id="agent_ml_001",
         name="model_training_orchestrator",
+        model=LiteLlm(model=OLLAMA_MODEL),
+        instruction=get_prompt("execution_agent"),
         description="Orchestrates distributed model training",
         category="ml",
         specialization="Model Training",
@@ -19,6 +25,8 @@ ML_AGENTS = [
     CustomLlmAgent(
         id="agent_ml_002",
         name="hyperparameter_tuner",
+        model=LiteLlm(model=OLLAMA_MODEL),
+        instruction=get_prompt("execution_agent"),
         description="Optimizes hyperparameters for machine learning models",
         category="ml",
         specialization="Hyperparameter Optimization",
@@ -34,6 +42,8 @@ ML_AGENTS = [
     CustomLlmAgent(
         id="agent_ml_003",
         name="model_interpreter",
+        model=LiteLlm(model=OLLAMA_MODEL),
+        instruction=get_prompt("execution_agent"),
         description="Provides interpretability and explanations for models",
         category="ml",
         specialization="Model Interpretability",
@@ -49,6 +59,8 @@ ML_AGENTS = [
     CustomLlmAgent(
         id="agent_ml_004",
         name="data_augmentation_specialist",
+        model=LiteLlm(model=OLLAMA_MODEL),
+        instruction=get_prompt("execution_agent"),
         description="Generates synthetic data and augmentation strategies",
         category="ml",
         specialization="Data Augmentation",
@@ -64,6 +76,8 @@ ML_AGENTS = [
     CustomLlmAgent(
         id="agent_ml_005",
         name="model_ensemble_builder",
+        model=LiteLlm(model=OLLAMA_MODEL),
+        instruction=get_prompt("execution_agent"),
         description="Creates ensemble models from multiple learners",
         category="ml",
         specialization="Ensemble Methods",
@@ -79,6 +93,8 @@ ML_AGENTS = [
     CustomLlmAgent(
         id="agent_ml_006",
         name="ml_operations_manager",
+        model=LiteLlm(model=OLLAMA_MODEL),
+        instruction=get_prompt("execution_agent"),
         description="Manages ML pipelines and production monitoring",
         category="ml",
         specialization="MLOps",
