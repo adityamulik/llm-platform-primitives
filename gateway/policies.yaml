@@ -1,0 +1,93 @@
+# Least Privilege Policy Engine
+# Default: Deny all. Explicitly grant only required permissions.
+
+roles:
+  viewer:
+    description: Read-only access to non-sensitive data
+    permissions:
+      tools:
+        - read_file
+        - list_directory
+        - generate_report
+      resources:
+        - "file://logs/app/*"
+        - "file://reports/*"
+      operations:
+        - GET
+        - LIST
+    # No write, delete, or exec permissions
+
+  analyst:
+    description: Read-only data analysis access
+    permissions:
+      tools:
+        - query_database
+        - read_file
+        - generate_report
+      resources:
+        - "db://analytics/*"
+        - "file://reports/*"
+        - "file://data/public/*"
+      operations:
+        - SELECT
+        - GET
+        - LIST
+    # No write, update, or delete permissions
+
+  developer:
+    description: Development-only access (no production)
+    permissions:
+      tools:
+        - read_file
+        - list_directory
+        - query_database
+      resources:
+        - "file://src/*"
+        - "file://logs/dev/*"
+        - "file://temp/*"
+        - "db://dev/*"
+        - "db://staging/*"
+      operations:
+        - SELECT
+        - GET
+        - LIST
+    # Explicitly blocked: production databases, deployment, admin operations
+
+  deployer:
+    description: Deployment and infrastructure access
+    permissions:
+      tools:
+        - deploy_application
+        - restart_service
+        - update_configuration
+      resources:
+        - "app://staging/*"
+        - "app://production/*"
+      operations:
+        - CREATE
+        - UPDATE
+    # Restricted: no delete, no data access
+
+  admin:
+    description: Full administrative access - requires justification
+    permissions:
+      tools:
+        - read_file
+        - list_directory
+        - query_database
+        - deploy_application
+        - update_configuration
+        - modify_permissions
+        - user_management
+        - audit_logs
+      resources:
+        - "db://production/*"
+        - "file://*"
+        - "app://*"
+      operations:
+        - SELECT
+        - GET
+        - LIST
+        - CREATE
+        - UPDATE
+    # Still no bulk deletes or dangerous operations without explicit approval

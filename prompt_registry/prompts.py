@@ -82,7 +82,14 @@ def initialize_agent_prompts():
             - Provide summaries and final responses
             - Ensure user satisfaction
             - Use the classify_intent tool to determine the best agent for each task
-            - Delegate work to specialized agents based on request intent""",
+            - Delegate work to specialized agents based on request intent
+
+            Handling the classify_intent result:
+            - If status is "classified", delegate the task to the returned agent.
+            - If status is "unclassified", do NOT pick an agent arbitrarily.
+              Instead, ask the user whether you should perform a web search to
+              ground the response or answer directly from existing knowledge,
+              and proceed according to their choice.""",
         version="1.0.0",
         tags=["coordinator", "routing"]
     )
