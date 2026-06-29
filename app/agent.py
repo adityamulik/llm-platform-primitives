@@ -141,6 +141,14 @@ class CustomLlmAgent(LlmAgent):
             metrics.record_hallucination(get_current_user())
             raise
 
+# Resolve an agent's instruction from the registry at run time (ADK
+# InstructionProvider) rather than capturing a fixed string at construction, so
+# a prompt rollback via the registry takes effect on the next request without
+# rebuilding the agents.
+def _prompt_provider(name: str):
+    return lambda _ctx: get_prompt(name)
+
+
 # Individual specialized agents. They share the same wiring (local model + all
 # team MCP toolsets) and differ only by name, prompt, and structured-output
 # schema. output_key derives from the name (docs_agent -> docs_result) so each
@@ -149,7 +157,7 @@ def _specialist(name: str, output_schema) -> CustomLlmAgent:
     return CustomLlmAgent(
         name=name,
         model=LiteLlm(model=OLLAMA_MODEL),
-        instruction=get_prompt(name),
+        instruction=_prompt_provider(name),
         output_schema=output_schema,
         output_key=name.replace("_agent", "_result"),
         tools=team_toolsets(),
@@ -168,7 +176,7 @@ execution_agent = _specialist("execution_agent", ExecutionOutput)
 root_agent = CustomLlmAgent(
     name="root_agent",
     model=LiteLlm(model=OLLAMA_MODEL),
-    instruction=get_prompt("root_agent"),
+    instruction=_prompt_provider("root_agent"),
     tools=[classify_intent], # classify intent at every turn
     sub_agents=[docs_agent, codebase_agent, research_agent, execution_agent],
 )

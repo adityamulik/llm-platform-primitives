@@ -3,9 +3,11 @@
 from .collector import (
     MetricsCollector,
     UserMetrics,
+    get_current_team,
     get_current_user,
     metrics,
     set_current_user,
+    team_for_role,
 )
 
 __all__ = [
@@ -14,4 +16,6 @@ __all__ = [
     "metrics",
     "set_current_user",
     "get_current_user",
+    "get_current_team",
+    "team_for_role",
 ]
