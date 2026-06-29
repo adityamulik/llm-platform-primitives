@@ -123,7 +123,7 @@ async def rollback_prompt_version(name: str, data: PromptRollbackRequest, reques
     return _prompt_state(name)
 
 
-@app.post("/login")
+@app.post("/auth-token")
 async def login(data: LoginRequest):
     username = data.username
     password = data.password

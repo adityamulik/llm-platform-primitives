@@ -22,13 +22,13 @@ GATEWAY_URL = os.getenv("GATEWAY_URL", "http://localhost:7010")
 app = FastAPI()
 
 
-@app.post("/auth-token")
+@app.post("/login")
 async def generate_auth_token(data: LoginRequest):
     """Forward credentials to the auth gateway and return the token it issues."""
     async with httpx.AsyncClient() as client:
         try:
             resp = await client.post(
-                f"{GATEWAY_URL}/login", json=data.model_dump()
+                f"{GATEWAY_URL}/auth-token", json=data.model_dump()
             )
         except httpx.RequestError as exc:
             raise HTTPException(status_code=503, detail=f"auth gateway unreachable: {exc}")
