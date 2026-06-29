@@ -1,4 +1,4 @@
-"""Token + authorization helpers shared by the auth server and the MCP bridges.
+"""Token + authorization helpers shared by the auth server and the MCP servers.
 
 Tokens are stateless JWTs that carry the authenticated user's ``role`` as a
 claim. Any service that holds the shared secret can verify a token and learn the
@@ -10,8 +10,7 @@ from __future__ import annotations
 
 import os
 from datetime import datetime, timedelta, timezone
-from functools import wraps
-from typing import Any, Callable
+from typing import Any
 
 import jwt
 
@@ -88,53 +87,3 @@ def authorize_claims(
     )
     decision["username"] = claims.get("sub")
     return decision
-
-
-def require_tool_access(tool_name: Callable[..., Any] | str | None = None):
-    """Flask decorator: require a valid token whose role may use the tool.
-
-    The protected tool name defaults to the Flask ``tool`` URL parameter, so it
-    works for routes shaped like ``/tools/<tool>``. Pass an explicit string to
-    pin a specific tool.
-
-    On success the verified claims are attached to ``flask.g.claims``.
-    """
-
-    # Allow bare @require_tool_access usage as well as @require_tool_access("x").
-    explicit_tool = None if callable(tool_name) else tool_name
-
-    def decorator(view: Callable[..., Any]) -> Callable[..., Any]:
-        @wraps(view)
-        def wrapper(*args: Any, **kwargs: Any):
-            from flask import g, jsonify, request
-
-            try:
-                token = token_from_header(request.headers.get("Authorization"))
-                claims = decode_token(token)
-            except AuthError as exc:
-                return jsonify({"error": exc.message}), exc.status_code
-
-            tool = explicit_tool or kwargs.get("tool")
-            if tool is not None:
-                decision = authorize_claims(claims, tool=tool)
-                if not decision["allowed"]:
-                    return (
-                        jsonify(
-                            {
-                                "error": "Forbidden",
-                                "reason": f"role '{claims.get('role')}' may not use tool '{tool}'",
-                                "decision": decision,
-                            }
-                        ),
-                        403,
-                    )
-
-            g.claims = claims
-            return view(*args, **kwargs)
-
-        return wrapper
-
-    # Support both @require_tool_access and @require_tool_access(...)
-    if callable(tool_name):
-        return decorator(tool_name)
-    return decorator

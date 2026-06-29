@@ -1,7 +1,7 @@
 """MCP auth/authz package.
 
 - ``engine``      RBAC policy engine driven by ``policies.yaml``.
-- ``authz``       Token (JWT) issue/verify helpers + a Flask enforcement decorator.
+- ``authz``       Token (JWT) issue/verify + policy authorization helpers.
 - ``auth_server`` Standalone login/token service (run as a script).
 """
 
