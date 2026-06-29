@@ -19,16 +19,36 @@ import time
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 
-# Current authenticated user for the in-flight request. Default keeps metrics
-# attributable even if the gateway forgets to set it.
+# A user's team is derived from their role (no separate team store). Roles map
+# many-to-one onto the owning team; unknown roles fall back to "unknown".
+ROLE_TEAM: dict[str, str] = {
+    "viewer": "shared",
+    "analyst": "analytics",
+    "developer": "developer",
+    "deployer": "devops",
+    "admin": "platform",
+}
+
+
+def team_for_role(role: str | None) -> str:
+    """The team that owns a role, for grouping metrics."""
+    return ROLE_TEAM.get(role or "", "unknown")
+
+
+# Current authenticated user (and derived team) for the in-flight request. The
+# defaults keep metrics attributable even if the gateway forgets to set them.
 _current_user: contextvars.ContextVar[str] = contextvars.ContextVar(
     "current_user", default="anonymous"
 )
+_current_team: contextvars.ContextVar[str] = contextvars.ContextVar(
+    "current_team", default="unknown"
+)
 
 
-def set_current_user(user_id: str | None) -> None:
-    """Record the authenticated user for the current request/context."""
+def set_current_user(user_id: str | None, *, role: str | None = None) -> None:
+    """Record the authenticated user (and their team) for the current context."""
     _current_user.set(user_id or "anonymous")
+    _current_team.set(team_for_role(role))
 
 
 def get_current_user() -> str:
@@ -36,11 +56,17 @@ def get_current_user() -> str:
     return _current_user.get()
 
 
+def get_current_team() -> str:
+    """The team the current context's metrics should be attributed to."""
+    return _current_team.get()
+
+
 @dataclass
 class UserMetrics:
     """Cumulative counters for a single user."""
 
     user_id: str
+    team: str = "unknown"
     requests: int = 0
     successes: int = 0
     errors: int = 0
@@ -77,6 +103,13 @@ class MetricsCollector:
         if m is None:
             m = UserMetrics(user_id=user_id)
             self._users[user_id] = m
+        # Refresh the team whenever the current context knows it. The bucket may
+        # have been created first by a call whose context var didn't carry the
+        # team (e.g. token recording on a worker thread), so don't rely on the
+        # creating call alone to set it.
+        team = get_current_team()
+        if team != "unknown":
+            m.team = team
         return m
 
     def record_tokens(

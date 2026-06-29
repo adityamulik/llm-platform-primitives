@@ -14,8 +14,9 @@ never invoke a tool the user isn't authorized to use.
 - **Auth & AuthZ** — JWT-based authentication and role-based access control (RBAC) for tools
 - **Multi-agent orchestration** — a coordinator that classifies intent and delegates to specialists
 - **Intent classification** — route requests to the right specialist agent
+- **Structured outputs** — specialists return typed, schema-validated results (Pydantic); schema violations are flagged as hallucinations
 - **Prompt versioning** — a small registry for versioned, named prompts
-- **LLM observability** — per-call token counting and cost estimation
+- **LLM observability** — per-call token/cost accounting plus per-user metrics (tokens, cost, success/error, latency)
 
 ## Architecture
 
@@ -64,6 +65,11 @@ never invoke a tool the user isn't authorized to use.
    token is attached to the request. The MCP server decodes it, resolves the
    role, and checks it against `gateway/policies.yaml`. Unauthorized calls are
    rejected before the tool runs, and the error is surfaced back to the agent.
+5. **Return a typed result.** Each specialist is bound to a Pydantic output
+   schema (`app/model.py`); its final answer is validated and written to session
+   state under a per-agent key. A schema-validation failure is logged and
+   counted as a hallucination, and per-user token/cost/latency metrics are
+   recorded for the request (see [Metrics](#metrics)).
 
 ## Security model
 
@@ -169,6 +175,21 @@ tail -f logs/*.log          # follow everything at once
 Raw stdout/stderr for each process is also captured alongside as `logs/*.out`
 (useful if a service crashes before logging is configured).
 
+### Metrics
+
+The gateway aggregates per-user counters in memory and exposes them at
+`GET /metrics` (`observability/metrics`): the user's team (derived from their
+role), request/success/error counts, hallucinations, input/output tokens,
+estimated cost, and latency.
+
+```bash
+curl -s localhost:7010/metrics            # all users
+curl -s localhost:7010/metrics?user=ana   # one user
+```
+
+> Counters are in-process and reset on restart. The endpoint is unauthenticated
+> and returns every user's stats — gate it before any shared deployment.
+
 ### Try it (curl)
 
 ```bash
@@ -189,7 +210,7 @@ curl -s -X POST localhost:7020/run-agent \
 | Service              | Port  | Notes                                        |
 |----------------------|-------|----------------------------------------------|
 | Demo app (`main.py`) | 7020  | Edge proxy: `/auth-token`, `/run-agent`      |
-| Gateway              | 7010  | `/login`, `/verify`, `/agent/execute`, `/health`, `/roles` |
+| Gateway              | 7010  | `/login`, `/verify`, `/agent/execute`, `/health`, `/roles`, `/metrics` |
 | MCP — Team A         | 8001  | Analytics                                    |
 | MCP — Team B         | 8002  | DevOps (deploy / restart / configure)        |
 | MCP — Team C         | 8003  | Developer (files / db)                       |
@@ -212,12 +233,17 @@ gateway/
   helper.py                 Password check + claim resolution helpers
 app/
   agent.py                  ADK multi-agent system + MCP token threading
+  model.py                  Pydantic output schemas for the specialist agents
 mcp_server/
   server_team_{a,b,c}.py    Independent MCP tool servers
+  server_common.py          Shared server bootstrap (logging + HTTP run)
   authz_middleware.py       Per-tool RBAC enforcement (FastMCP middleware)
 intent_classifier/          Keyword-based intent classification
 prompt_registry/            Versioned, named prompts
-observability/              Token counting + cost estimation; per-service logging (-> logs/)
+observability/
+  token_counter/            Token counting + cost estimation
+  metrics/                  Per-user metrics (tokens, cost, success/error, latency)
+  logging/                  Per-service structured logging (-> logs/)
 ```
 
 ## Built with

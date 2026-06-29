@@ -163,7 +163,7 @@ async def execute_agent(request: Request, data: AgentExecuteRequest):
     # Thread the caller's token to the MCP servers so they can authorize tools,
     # and attribute this request's metrics (tokens/latency/errors) to the user.
     agent.set_request_auth(request.headers.get("Authorization"))
-    set_current_user(user_id)
+    set_current_user(user_id, role=role)
 
     # track_request times the body and records success/error + latency for the
     # user: a normal return counts as success, any raised HTTPException as error.
