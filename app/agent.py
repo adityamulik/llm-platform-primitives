@@ -12,6 +12,7 @@ from mcp.shared._httpx_utils import create_mcp_http_client
 from intent_classifier import classify_intent
 from prompt_registry import get_prompt
 from observability.token_counter import TokenCostCalculator
+from observability.metrics import metrics, get_current_user
 
 from app.model import (
     CodebaseOutput,
@@ -107,6 +108,14 @@ class CustomLlmAgent(LlmAgent):
             f"Total: {usage.input_tokens:,} in + {usage.output_tokens:,} out = ${usage.total_cost:.6f}"
         )
         logger.info(f"[{self.name}] Output text: {output_text[:500]}...")
+        # Attribute this model call's usage to the current user (all agents in a
+        # request share one user via the context var set by the gateway).
+        metrics.record_tokens(
+            get_current_user(),
+            input_tokens=usage.input_tokens,
+            output_tokens=usage.output_tokens,
+            cost_usd=usage.total_cost,
+        )
 
     async def _run_async_impl(self, ctx):
         """Run the agent, flagging schema-validation failures as hallucinations.
@@ -129,6 +138,7 @@ class CustomLlmAgent(LlmAgent):
                 exc.error_count(),
                 exc.errors(include_url=False),
             )
+            metrics.record_hallucination(get_current_user())
             raise
 
 # Individual specialized agents
