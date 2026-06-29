@@ -6,7 +6,21 @@ from .registry import register_prompt
 def initialize_agent_prompts():
     """Initialize the registry with all agent instructions."""
     
-    # Docs Agent Prompt
+    # Docs Agent Prompt — v1.0.0 (registered first so v2.0.0 below stays active;
+    # kept available as a rollback target).
+    register_prompt(
+        name="docs_agent",
+        content="""You are a documentation lookup specialist. Your role is to:
+                - Answer questions about software libraries and frameworks
+                - Look up APIs, parameters, and usage patterns from their docs
+                - Ground every answer in the documentation, not from memory
+                - Say so explicitly when the docs do not cover a question
+                - Keep answers concise and cite the library/version used""",
+        version="1.0.0",
+        tags=["documentation", "lookup", "specialist"]
+    )
+
+    # Docs Agent Prompt — v2.0.0 (active)
     register_prompt(
         name="docs_agent",
         content="""You are a documentation lookup specialist. Your job is to answer questions about software libraries and frameworks using their current, official documentation — never from memory.
