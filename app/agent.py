@@ -1,3 +1,4 @@
+import contextvars
 import logging
 import os
 from google.adk.agents import LlmAgent
@@ -5,6 +6,7 @@ from google.adk.apps import App
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools.mcp_tool.mcp_toolset import MCPToolset
 from google.adk.tools.mcp_tool.mcp_session_manager import StreamableHTTPConnectionParams
+from mcp.shared._httpx_utils import create_mcp_http_client
 from intent_classifier import classify_intent
 from prompt_registry import get_prompt
 from observability.token_counter import TokenCostCalculator
@@ -12,6 +14,29 @@ from observability.token_counter import TokenCostCalculator
 logger = logging.getLogger(__name__)
 
 OLLAMA_MODEL = "ollama_chat/llama3.1:latest"
+
+# Caller's bearer token for the current request, threaded into the MCP HTTP
+# calls so each MCP server can authorize the tool call (server-side RBAC). Set
+# by the gateway via set_request_auth() before running the agent.
+_current_auth: contextvars.ContextVar[str] = contextvars.ContextVar("current_auth", default="")
+
+
+def set_request_auth(authorization: str | None) -> None:
+    """Record the caller's Authorization header for the current request."""
+    _current_auth.set(authorization or "")
+
+
+def _auth_http_client_factory(headers=None, timeout=None, auth=None):
+    """httpx client for MCP that injects the caller's token on every request."""
+    client = create_mcp_http_client(headers=headers, timeout=timeout, auth=auth)
+
+    async def _inject_auth(request):
+        token = _current_auth.get()
+        if token:
+            request.headers["Authorization"] = token
+
+    client.event_hooks.setdefault("request", []).append(_inject_auth)
+    return client
 
 # Independent team MCP servers, assumed already running over HTTP. Agents just
 # connect to them. Partitioned per team so an auth/authz layer can later gate
@@ -26,13 +51,15 @@ _TEAM_SERVERS = {
 def _team_toolset(url: str) -> MCPToolset:
     """Build an MCPToolset that connects to a running team MCP server.
 
-    Fresh instance per agent so toolsets aren't shared across agents.
-    Auth/authz tokens will be injected via `headers` here later.
+    Fresh instance per agent so toolsets aren't shared across agents. The
+    caller's bearer token is injected per request by _auth_http_client_factory
+    so the MCP server can enforce RBAC.
     """
     return MCPToolset(
         connection_params=StreamableHTTPConnectionParams(
             url=url,
-            headers={},  # placeholder for future auth credentials
+            headers={},
+            httpx_client_factory=_auth_http_client_factory,
         ),
     )
 

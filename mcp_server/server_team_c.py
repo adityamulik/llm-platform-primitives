@@ -3,8 +3,10 @@
 import os
 from fastmcp import FastMCP
 from datetime import datetime
+from authz_middleware import AuthzMiddleware
 
 mcp = FastMCP("Team C - Developer Server")
+mcp.add_middleware(AuthzMiddleware())  # RBAC enforcement on every tool call
 
 @mcp.tool()
 def read_file(path: str) -> dict:

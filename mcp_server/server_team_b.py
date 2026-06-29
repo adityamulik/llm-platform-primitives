@@ -3,8 +3,10 @@
 import os
 from fastmcp import FastMCP
 from datetime import datetime
+from authz_middleware import AuthzMiddleware
 
 mcp = FastMCP("Team B - DevOps Server")
+mcp.add_middleware(AuthzMiddleware())  # RBAC enforcement on every tool call
 
 @mcp.tool()
 def deploy_application(service: str, version: str, environment: str = "staging") -> dict:
