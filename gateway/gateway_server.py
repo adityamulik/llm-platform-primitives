@@ -1,33 +1,10 @@
 #!/usr/bin/env python3
-"""Auth/AuthZ server.
-
-Provides the login + token-issuance side of the MCP auth story:
-
-  POST /login      {username, password}            -> issues a signed auth token
-                                                       carrying the user's role
-  POST /verify     {token} or Bearer header        -> validates a token, returns
-                                                       its claims (who + role)
-  POST /authorize  {tool?, resource?, operation?}  -> policy decision for the
-                   + Bearer token                     caller's role (PEP/PDP)
-  GET  /roles                                      -> roles known to policies.yaml
-  
-  POST /session    {token or Bearer header}        -> creates a session for the user,
-                                                       returns session_id + authorized_tools
-  GET  /agent/session/<session_id>                 -> get session context and execution history
-  
-  POST /agent/execute  {session_id, prompt}        -> execute agent with authorization,
-                       + Bearer token                 returns result + tools_used
-  
-  GET  /health
-
-Run standalone:  uv run python mcp_auth/auth_server.py
-Configure with:  MCP_AUTH_SECRET, MCP_AUTH_TOKEN_TTL, AUTH_PORT, AUTH_HOST
-"""
 
 from __future__ import annotations
 
-import asyncio
 import hmac
+import uvicorn
+import logging
 import os
 import sys
 from pathlib import Path
@@ -36,7 +13,12 @@ from typing import Optional
 import yaml
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+
+from google.adk import Runner
+from google.adk.sessions import InMemorySessionService
+from google.genai import types
+
+from app import agent
 
 # Allow running as a script (python mcp_auth/auth_server.py) by ensuring the
 # repo root is importable so the `mcp_auth` package resolves.
@@ -52,6 +34,15 @@ from gateway.authz import (  # noqa: E402
 from gateway.engine import policy_engine  # noqa: E402
 from gateway._delete_session_service import get_session_service  # noqa: E402
 from gateway._delete_agent_runner import run_agent_with_auth  # noqa: E402
+from gateway.models import (  # noqa: E402
+    AgentExecuteRequest,
+    AuthorizeRequest,
+    LoginRequest,
+    SessionRequest,
+    TokenRequest,
+)
+
+logger = logging.getLogger(__name__)
 
 USERS_PATH = Path(__file__).resolve().parent / "users.yaml"
 
@@ -63,32 +54,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-# Pydantic models
-class LoginRequest(BaseModel):
-    username: str
-    password: str
-
-
-class TokenRequest(BaseModel):
-    token: Optional[str] = None
-
-
-class AuthorizeRequest(BaseModel):
-    tool: Optional[str] = None
-    resource: Optional[str] = None
-    operation: Optional[str] = None
-
-
-class SessionRequest(BaseModel):
-    token: Optional[str] = None
-
-
-class AgentExecuteRequest(BaseModel):
-    session_id: str
-    prompt: str
-    token: Optional[str] = None
 
 
 def _load_users() -> dict[str, dict[str, str]]:
@@ -293,53 +258,60 @@ async def execute_agent(request: Request, data: AgentExecuteRequest):
         }
     """
     try:
-        body_dict = {"token": data.token} if data.token else {}
-        claims = await _claims_from_request(request, body_dict)
+        claims = decode_token(token_from_header(request.headers.get("Authorization")))
     except AuthError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message)
+
+    user_id = claims.get("sub", "default")
+    logger.info("Agent execution request from %s: %r", user_id, data.prompt[:100])
+
+    # Set up the session + runner.
+    try:
+        session_service = InMemorySessionService()
+        session = await session_service.create_session(
+            app_name="default", user_id="default"
+        )
+        
+        runner = Runner(
+            agent=agent.root_agent,
+            app_name="default",
+            session_service=session_service,
+        )
+    except Exception as exc:
+        logger.exception("Failed to set up agent session/runner")
+        raise HTTPException(
+            status_code=500, detail=f"agent setup failed: {type(exc).__name__}: {exc}"
+        )
+
+    # Run the agent and collect the final text.
+    final_response_text = ""
+    try:        
+        content = types.Content(
+            role="user", parts=[types.Part.from_text(text=data.prompt)]
+        )
+        async for event in runner.run_async(
+            user_id="default",
+            session_id=session.id,
+            new_message=content,
+        ):
+            if event.content.parts and event.content.parts[0].text:
+                final_response_text = event.content.parts[0].text
+        return final_response_text
     
-    session_id = data.session_id
-    prompt = data.prompt
-    user_id = claims.get("sub")
-    role = claims.get("role")
-    
-    # Get authorized tools for this user
-    authorized_tools = policy_engine.get_authorized_tools(role)
-    
-    print(f"🔐 Agent execution request from {user_id} (role={role})")
-    print(f"   Session: {session_id}")
-    print(f"   Prompt: {prompt[:100]}...")
-    print(f"   Authorized tools: {authorized_tools}")
-    
-    # Mock agent execution
-    # Replace with real agent when available
-    mock_result = {
-        "status": "success",
-        "response": f"Mock agent processed: {prompt[:50]}...",
-        "tools_used": authorized_tools[:1] if authorized_tools else [],
-    }
-    
-    # Record in session
-    await session_service.record_execution(
-        session_id=session_id,
-        prompt=prompt,
-        result=mock_result,
-        tools_used=mock_result.get("tools_used", []),
-    )
-    
-    return {
-        "status": "success",
-        "session_id": session_id,
-        "user_id": user_id,
-        "result": mock_result,
-        "tools_used": mock_result.get("tools_used", []),
-    }
+    except Exception as exc:
+        logger.exception("Agent run failed")
+        raise HTTPException(
+            status_code=500, detail=f"agent run failed: {type(exc).__name__}: {exc}"
+        )
 
 
 if __name__ == "__main__":
-    import uvicorn
-    
-    port = int(os.getenv("AUTH_PORT", "8000"))
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
+    port = int(os.getenv("AUTH_PORT", "7010"))
     host = os.getenv("AUTH_HOST", "0.0.0.0")
     print(f"🚀 Gateway Server starting on http://{host}:{port}")
     print(f"👤 users: {', '.join(USERS.keys())}")

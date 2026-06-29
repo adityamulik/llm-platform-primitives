@@ -1,79 +1,84 @@
 
-import hmac
-from pathlib import Path
+import os
 
-import yaml
+import httpx
 from fastapi import FastAPI, HTTPException, Request
-from pydantic import BaseModel
+import uvicorn
 
-from gateway.authz import (
-    AuthError,
-    decode_token,
-    issue_token,
-    token_from_header,
-)
-from app import agent
 
-from google.adk import Runner
-from google.adk.sessions import InMemorySessionService
-from google.genai import types
+from gateway.models import LoginRequest
 
-USERS = (yaml.safe_load(Path(__file__).parent.joinpath("gateway/users.yaml").read_text()) or {}).get(
-    "users", {}
-)
+# The auth gateway (gateway/server.py) is the only service that checks
+# credentials and mints tokens. We forward credentials to it and verify the
+# tokens it issues locally via the shared signing secret.
+GATEWAY_URL = os.getenv("GATEWAY_URL", "http://localhost:7010")
 
 app = FastAPI()
 
 
-class LoginRequest(BaseModel):
-    username: str
-    password: str
-
-
 @app.post("/auth-token")
 async def generate_auth_token(data: LoginRequest):
-    """Validate credentials and issue a signed JWT carrying the user's role."""
-    user = USERS.get(data.username)
-    if not user or not hmac.compare_digest(str(user.get("password", "")), data.password):
-        raise HTTPException(status_code=401, detail="invalid credentials")
-    return issue_token(data.username, user["role"])
+    """Forward credentials to the auth gateway and return the token it issues."""
+    async with httpx.AsyncClient() as client:
+        try:
+            print("Check")
+            resp = await client.post(
+                f"{GATEWAY_URL}/login", json=data.model_dump()
+            )
+        except httpx.RequestError as exc:
+            raise HTTPException(status_code=503, detail=f"auth gateway unreachable: {exc}")
+
+    if resp.status_code != 200:
+        detail = resp.json().get("detail", resp.text) if resp.content else "auth failed"
+        raise HTTPException(status_code=resp.status_code, detail=detail)
+    return resp.json()
 
 
 @app.post("/run-agent", status_code=201)
 async def run_agent(request: Request):
-    """Verify the bearer token and open a session for the caller."""
-    try:
-        claims = decode_token(token_from_header(request.headers.get("Authorization")))
-    except AuthError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=exc.message)
+    """Verify the caller's token via the gateway, then run the agent through it."""
+    auth_header = request.headers.get("Authorization")
+    if not auth_header:
+        raise HTTPException(status_code=401, detail="Missing Authorization header")
 
-    role = claims.get("role")
+    body = await request.json()
+    if not body.get("prompt"):
+        raise HTTPException(status_code=400, detail="Missing 'prompt' in request body")
 
-    session_service = InMemorySessionService()
+    async with httpx.AsyncClient() as client:
+        # 1. Validate the token. The gateway reads it from the Authorization header.
+        try:
+            verify_resp = await client.post(
+                f"{GATEWAY_URL}/verify",
+                headers={"Authorization": auth_header},
+                json={},
+            )
+        except httpx.RequestError as exc:
+            raise HTTPException(status_code=503, detail=f"token validation failed: {exc}")
+        if verify_resp.status_code != 200:
+            detail = verify_resp.json().get("detail", "invalid token")
+            raise HTTPException(status_code=verify_resp.status_code, detail=detail)
 
-    req = await request.json()
+        # 2. Execute the agent. /agent/execute requires session_id + prompt in the
+        #    body and the token in the Authorization header.
+        try:
+            exec_resp = await client.post(
+                f"{GATEWAY_URL}/agent/execute",
+                headers={"Authorization": auth_header},
+                json={
+                    "session_id": body.get("session_id", "default"),
+                    "prompt": body["prompt"],
+                },  # both required by the gateway's AgentExecuteRequest model
+            )
+        except httpx.RequestError as exc:
+            raise HTTPException(status_code=503, detail=f"Agent Response Failed: {exc}")
+        if exec_resp.status_code not in (200, 201):
+            detail = exec_resp.json().get("detail", "agent execution failed")
+            raise HTTPException(status_code=exec_resp.status_code, detail=detail)
 
-    session = await session_service.create_session(
-        app_name="default", user_id="default"
-    )
+    return exec_resp.json()
 
-    runner = Runner(
-        agent=agent.root_agent,
-        app_name='default',
-        session_service=session_service,
-    )
 
-    final_response_text = ""
-    content = types.Content(
-        role='user', parts=[types.Part.from_text(text=req["prompt"])]
-    )
-
-    async for event in runner.run_async(
-        user_id="default",
-        session_id=session.id,
-        new_message=content,
-    ):
-      if event.content.parts and event.content.parts[0].text:
-        final_response_text = event.content.parts[0].text
-
-    return final_response_text
+if __name__ == "__main__":
+    # Specify your port number here (e.g., 7020)
+    uvicorn.run(app, host="127.0.0.1", port=7020)
