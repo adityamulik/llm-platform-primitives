@@ -1,0 +1,221 @@
+#!/usr/bin/env python3
+
+from __future__ import annotations
+
+
+import uvicorn
+import logging
+import os
+import sys
+from pathlib import Path
+
+
+import yaml
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+
+from google.adk import Runner
+from google.adk.sessions import InMemorySessionService
+from google.genai import types
+
+from app import agent
+
+from gateway.authz import (  # noqa: E402
+    AuthError,
+    decode_token,
+    issue_token,
+    token_from_header,
+)
+from gateway.engine import policy_engine
+from gateway.models import (
+    AgentExecuteRequest,
+    TokenRequest,
+)
+
+from gateway.models import LoginRequest
+
+from gateway.helper import _check_password, _claims_from_request
+
+# Allow running as a script (python mcp_auth/auth_server.py) by ensuring the
+# repo root is importable so the `mcp_auth` package resolves.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+logger = logging.getLogger(__name__)
+
+USERS_PATH = Path(__file__).resolve().parent / "users.yaml"
+
+app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+def _load_users() -> dict[str, dict[str, str]]:
+    with USERS_PATH.open("r", encoding="utf-8") as fh:
+        data = yaml.safe_load(fh) or {}
+    return data.get("users", {})
+
+
+USERS = _load_users()
+
+# Get session service
+# session_service = get_session_service()
+
+# # Persistent ADK session service for the agent runner. Must outlive individual
+# # requests so an existing session_id can be reused across calls.
+adk_session_service = InMemorySessionService()
+
+
+@app.get("/health")
+async def health():
+    return {
+        "status": "ok",
+        "service": "MCP Auth Server",
+        "users": len(USERS),
+        "roles": policy_engine.roles(),
+    }
+
+
+@app.get("/roles")
+async def roles():
+    return {"roles": policy_engine.roles()}
+
+
+@app.post("/login")
+async def login(data: LoginRequest):
+    username = data.username
+    password = data.password
+
+    user = USERS.get(username)
+    if not user or not _check_password(user.get("password", ""), password):
+        # Same response for unknown user and bad password (no enumeration).
+        raise HTTPException(status_code=401, detail="invalid credentials")
+
+    role = user["role"]
+    if role not in policy_engine.roles():
+        raise HTTPException(
+            status_code=500, detail=f"user role '{role}' is not defined in policies.yaml"
+        )
+
+    token_info = issue_token(username, role)
+    print(f"🔑 issued token for '{username}' (role={role})")
+    return token_info
+
+
+@app.post("/verify")
+async def verify(request: Request, data: TokenRequest):
+    try:
+        token = data.token or None
+        body_dict = {"token": token} if token else {}
+        claims = await _claims_from_request(request, body_dict)
+    except AuthError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.message)
+    
+    return {
+        "valid": True,
+        "username": claims.get("sub"),
+        "role": claims.get("role"),
+        "expires_at": claims.get("exp"),
+    }
+
+@app.post("/agent/execute")
+async def execute_agent(request: Request, data: AgentExecuteRequest):
+    """Execute the agent with authorization checks and session tracking.
+    
+    Request body:
+        {
+            "session_id": "uuid",          # From POST /session
+            "prompt": "user question",     # The agent prompt
+            "token": "jwt-token"           # OR use Authorization header
+        }
+    
+    Returns:
+        {
+            "status": "success" | "error",
+            "session_id": "uuid",
+            "user_id": "username",
+            "result": {...},               # Agent execution result
+            "tools_used": [...],           # Tools that were called
+            "error": "..."                 # If status is error
+        }
+    """
+    try:
+        claims = decode_token(token_from_header(request.headers.get("Authorization")))
+    except AuthError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.message)
+
+    user_id = claims.get("sub", "default")
+    role = claims.get("role", "")
+    logger.info("Agent execution request from %s (role=%s): %r", user_id, role, data.prompt[:100])
+
+    # Thread the caller's token to the MCP servers so they can authorize tools.
+    agent.set_request_auth(request.headers.get("Authorization"))
+
+    # Set up the session + runner. Sessions are namespaced by the authenticated
+    # user_id, so a caller can only reuse their OWN session_id — passing another
+    # user's session_id simply won't resolve. The caller's role is stored in
+    # session state so the agent's before_tool_callback can enforce RBAC.
+    try:
+        session = None
+        if data.session_id:
+            session = await adk_session_service.get_session(
+                app_name="default",
+                user_id=user_id,
+                session_id=data.session_id,
+            )
+        if session is None:
+            session = await adk_session_service.create_session(
+                app_name="default",
+                user_id=user_id,
+                state={"user_role": role},
+            )
+
+        runner = Runner(
+            agent=agent.root_agent,
+            app_name="default",
+            session_service=adk_session_service,
+        )
+    except Exception as exc:
+        logger.exception("Failed to set up agent session/runner")
+        raise HTTPException(
+            status_code=500, detail=f"agent setup failed: {type(exc).__name__}: {exc}"
+        )
+
+    # Run the agent and collect the final text.
+    final_response_text = ""
+    try:        
+        content = types.Content(
+            role="user", parts=[types.Part.from_text(text=data.prompt)]
+        )
+        async for event in runner.run_async(
+            user_id=user_id,
+            session_id=session.id,
+            new_message=content,
+        ):
+            if event.content.parts and event.content.parts[0].text:
+                final_response_text = event.content.parts[0].text
+        return {"session_id": session.id, "res": final_response_text}
+    
+    except Exception as exc:
+        logger.exception("Agent run failed")
+        raise HTTPException(
+            status_code=500, detail=f"agent run failed: {type(exc).__name__}: {exc}"
+        )
+
+
+if __name__ == "__main__":
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
+    port = int(os.getenv("AUTH_PORT", "7010"))
+    host = os.getenv("AUTH_HOST", "0.0.0.0")
+    print(f"🚀 Gateway Server starting on http://{host}:{port}")
+    print(f"👤 users: {', '.join(USERS.keys())}")
+    print(f"🛡️  roles: {', '.join(policy_engine.roles())}")
+    uvicorn.run(app, host=host, port=port, log_level="info")

@@ -1,0 +1,30 @@
+# User -> role directory consumed by the auth server at /login.
+#
+# DEMO ONLY: passwords are stored in plaintext for local development. In a real
+# deployment replace this with a proper identity store (hashed + salted
+# credentials, or an external IdP / OIDC provider). The role assigned here is
+# what gets embedded into the issued auth token and later evaluated against
+# policies.yaml by the policy engine.
+#
+# Roles must exist in policies.yaml.
+
+users:
+  vera:
+    password: viewer-pass
+    role: viewer
+
+  ana:
+    password: analyst-pass
+    role: analyst
+
+  dev:
+    password: developer-pass
+    role: developer
+
+  dale:
+    password: deployer-pass
+    role: deployer
+
+  root:
+    password: admin-pass
+    role: admin
