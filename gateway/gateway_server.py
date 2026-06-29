@@ -34,10 +34,15 @@ from gateway.engine import policy_engine
 from gateway.models import (
     AgentExecuteRequest,
     LoginRequest,
+    PromptRollbackRequest,
     TokenRequest,
 )
-from gateway.helper import _check_password, _claims_from_request
+from gateway.helper import _check_password, _claims_from_request, _require_admin, _prompt_state
 from observability.metrics import metrics, set_current_user  # noqa: E402
+from prompt_registry import (
+    list_prompts,
+    rollback_prompt,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +96,31 @@ async def get_metrics(user: str | None = None):
     Pass ``?user=<username>`` for one user, or omit for everyone.
     """
     return metrics.snapshot(user)
+
+
+@app.get("/prompts")
+async def get_prompts(request: Request):
+    """List every prompt with its active version and full version history."""
+    _require_admin(request)
+    return {"prompts": [_prompt_state(name) for name in list_prompts()]}
+
+
+@app.post("/prompts/{name}/rollback")
+async def rollback_prompt_version(name: str, data: PromptRollbackRequest, request: Request):
+    """Roll a prompt back to an earlier version (admin only).
+
+    History is preserved; this only repoints which version the agents use on
+    their next request. Returns the prompt's new active version.
+    """
+    claims = _require_admin(request)
+    try:
+        new_active = rollback_prompt(name, data.version)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    logger.info(
+        "Prompt %r rolled back to %s by %s", name, new_active, claims.get("sub")
+    )
+    return _prompt_state(name)
 
 
 @app.post("/login")

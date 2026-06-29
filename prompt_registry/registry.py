@@ -90,10 +90,30 @@ class PromptRegistry:
         
         return self._prompts[name][version]
     
+    def rollback(self, name: str, version: str) -> str:
+        """Repoint a prompt's active version to an existing earlier version.
+
+        History is never deleted — rollback only changes which version
+        ``get_prompt(name)`` returns. Returns the version now active. Raises
+        KeyError if the prompt or target version is unknown.
+        """
+        if name not in self._prompts:
+            raise KeyError(f"Prompt '{name}' not found in registry")
+        if version not in self._prompts[name]:
+            raise KeyError(f"Version '{version}' not found for prompt '{name}'")
+        self._latest_versions[name] = version
+        return version
+
+    def active_version(self, name: str) -> str:
+        """The version currently returned by ``get_prompt(name)``."""
+        if name not in self._prompts:
+            raise KeyError(f"Prompt '{name}' not found in registry")
+        return self._latest_versions[name]
+
     def list_prompts(self) -> List[str]:
         """List all registered prompt names."""
         return list(self._prompts.keys())
-    
+
     def list_versions(self, name: str) -> List[str]:
         """List all versions of a prompt."""
         if name not in self._prompts:
@@ -139,3 +159,13 @@ def list_prompts() -> List[str]:
 def list_versions(name: str) -> List[str]:
     """List all versions of a prompt."""
     return _registry.list_versions(name)
+
+
+def rollback_prompt(name: str, version: str) -> str:
+    """Roll a prompt back to an existing version in the global registry."""
+    return _registry.rollback(name, version)
+
+
+def active_version(name: str) -> str:
+    """The currently active version of a prompt in the global registry."""
+    return _registry.active_version(name)

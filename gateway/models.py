@@ -34,3 +34,7 @@ class AgentExecuteRequest(BaseModel):
     session_id: str
     prompt: str
     token: Optional[str] = None
+
+
+class PromptRollbackRequest(BaseModel):
+    version: str

@@ -190,6 +190,28 @@ curl -s localhost:7010/metrics?user=ana   # one user
 > Counters are in-process and reset on restart. The endpoint is unauthenticated
 > and returns every user's stats — gate it before any shared deployment.
 
+### Prompt rollback
+
+Prompts are versioned in `prompt_registry`, and agents resolve their instruction
+from the registry on every request — so rolling a prompt back to an earlier
+version takes effect on the next agent run, no restart needed. The gateway
+exposes this (admin-only):
+
+```bash
+# List prompts with their active version + history
+curl -s localhost:7010/prompts -H "Authorization: Bearer <admin-token>"
+
+# Roll a prompt back to an earlier version
+curl -s -X POST localhost:7010/prompts/docs_agent/rollback \
+  -H "Authorization: Bearer <admin-token>" \
+  -H 'Content-Type: application/json' \
+  -d '{"version":"1.0.0"}'
+```
+
+History is never deleted — rollback only repoints which version is active.
+Changes are in-memory and reset on restart (the registry re-seeds from
+`prompt_registry/prompts.py`).
+
 ### Try it (curl)
 
 ```bash
@@ -210,7 +232,7 @@ curl -s -X POST localhost:7020/run-agent \
 | Service              | Port  | Notes                                        |
 |----------------------|-------|----------------------------------------------|
 | Demo app (`main.py`) | 7020  | Edge proxy: `/auth-token`, `/run-agent`      |
-| Gateway              | 7010  | `/login`, `/verify`, `/agent/execute`, `/health`, `/roles`, `/metrics` |
+| Gateway              | 7010  | `/login`, `/verify`, `/agent/execute`, `/health`, `/roles`, `/metrics`, `/prompts` |
 | MCP — Team A         | 8001  | Analytics                                    |
 | MCP — Team B         | 8002  | DevOps (deploy / restart / configure)        |
 | MCP — Team C         | 8003  | Developer (files / db)                       |
