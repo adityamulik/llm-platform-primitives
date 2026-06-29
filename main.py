@@ -21,7 +21,6 @@ async def generate_auth_token(data: LoginRequest):
     """Forward credentials to the auth gateway and return the token it issues."""
     async with httpx.AsyncClient() as client:
         try:
-            print("Check")
             resp = await client.post(
                 f"{GATEWAY_URL}/login", json=data.model_dump()
             )
@@ -45,7 +44,11 @@ async def run_agent(request: Request):
     if not body.get("prompt"):
         raise HTTPException(status_code=400, detail="Missing 'prompt' in request body")
 
-    async with httpx.AsyncClient() as client:
+    # The agent run can take much longer than httpx's 5s default, so give the
+    # execute call a generous read timeout; otherwise we'd time out and never
+    # see the gateway's real response/error.
+    timeout = httpx.Timeout(connect=10.0, read=300.0, write=30.0, pool=10.0)
+    async with httpx.AsyncClient(timeout=timeout) as client:
         # 1. Validate the token. The gateway reads it from the Authorization header.
         try:
             verify_resp = await client.post(
@@ -56,8 +59,7 @@ async def run_agent(request: Request):
         except httpx.RequestError as exc:
             raise HTTPException(status_code=503, detail=f"token validation failed: {exc}")
         if verify_resp.status_code != 200:
-            detail = verify_resp.json().get("detail", "invalid token")
-            raise HTTPException(status_code=verify_resp.status_code, detail=detail)
+            raise HTTPException(status_code=verify_resp.status_code, detail=verify_resp.text)
 
         # 2. Execute the agent. /agent/execute requires session_id + prompt in the
         #    body and the token in the Authorization header.
@@ -73,8 +75,7 @@ async def run_agent(request: Request):
         except httpx.RequestError as exc:
             raise HTTPException(status_code=503, detail=f"Agent Response Failed: {exc}")
         if exec_resp.status_code not in (200, 201):
-            detail = exec_resp.json().get("detail", "agent execution failed")
-            raise HTTPException(status_code=exec_resp.status_code, detail=detail)
+            raise HTTPException(status_code=exec_resp.status_code, detail=exec_resp.text)
 
     return exec_resp.json()
 
