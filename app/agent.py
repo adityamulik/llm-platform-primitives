@@ -11,6 +11,13 @@ from intent_classifier import classify_intent
 from prompt_registry import get_prompt
 from observability.token_counter import TokenCostCalculator
 
+from app.model import (
+    CodebaseOutput,
+    DocsOutput,
+    ExecutionOutput,
+    ResearchOutput,
+)
+
 logger = logging.getLogger(__name__)
 
 OLLAMA_MODEL = "ollama_chat/llama3.1:latest"
@@ -104,6 +111,8 @@ docs_agent = CustomLlmAgent(
     name="docs_agent",
     model=LiteLlm(model=OLLAMA_MODEL),
     instruction=get_prompt("docs_agent"),
+    output_schema=DocsOutput,
+    output_key="docs_result",
     tools=team_toolsets(),
 )
 
@@ -111,6 +120,8 @@ codebase_agent = CustomLlmAgent(
     name="codebase_agent",
     model=LiteLlm(model=OLLAMA_MODEL),
     instruction=get_prompt("codebase_agent"),
+    output_schema=CodebaseOutput,
+    output_key="codebase_result",
     tools=team_toolsets(),
 )
 
@@ -118,6 +129,8 @@ research_agent = CustomLlmAgent(
     name="research_agent",
     model=LiteLlm(model=OLLAMA_MODEL),
     instruction=get_prompt("research_agent"),
+    output_schema=ResearchOutput,
+    output_key="research_result",
     tools=team_toolsets(),
 )
 
@@ -125,6 +138,8 @@ execution_agent = CustomLlmAgent(
     name="execution_agent",
     model=LiteLlm(model=OLLAMA_MODEL),
     instruction=get_prompt("execution_agent"),
+    output_schema=ExecutionOutput,
+    output_key="execution_result",
     tools=team_toolsets(),
 )
 

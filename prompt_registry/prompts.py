@@ -22,7 +22,16 @@ def initialize_agent_prompts():
             - If you cannot resolve the library at all, tell the user the library wasn't found and ask them to confirm the exact name.
             - Keep answers concise and cite which library/version the docs came from.
 
-            You do not author new documentation, run code, or search the open web. If a request falls outside documentation lookup, say it's out of scope for this agent.""",
+            You do not author new documentation, run code, or search the open web. If a request falls outside documentation lookup, say it's out of scope for this agent.
+
+            Output format — return a single JSON object matching the DocsOutput schema:
+            - answer: your grounded answer, drawn only from the fetched docs.
+            - library_name: the library the answer is about (e.g. "FastAPI").
+            - version: the library version the docs reflect, or null if unknown.
+            - sources: one entry per docs lookup, each with the resolved library_id and the topic (or null).
+            - grounded: true only if every claim is backed by the fetched docs; false if the docs did not cover the question.
+            - out_of_scope: true if the request was not a documentation lookup.
+            Do not include any text outside the JSON object.""",
         version="2.0.0",
         tags=["documentation", "lookup", "context7", "grounded"]
     )
@@ -37,7 +46,14 @@ def initialize_agent_prompts():
                 - Debug and optimize code
                 - Provide implementation suggestions
                 - Explain complex code structures
-                - Review code quality and maintainability""",
+                - Review code quality and maintainability
+
+                Output format — return a single JSON object matching the CodebaseOutput schema:
+                - summary: an overall assessment of the code reviewed.
+                - findings: a list of issues/observations, each with title, severity (one of info, low, medium, high, critical), location (file:line or function, or null), and a concrete recommendation.
+                - design_patterns: notable patterns or anti-patterns identified.
+                - maintainability_score: an integer 0-100, or null if you cannot judge it.
+                Do not include any text outside the JSON object.""",
         version="1.0.0",
         tags=["code", "specialist"]
     )
@@ -52,7 +68,16 @@ def initialize_agent_prompts():
                 - Provide evidence-based recommendations
                 - Identify best practices and patterns
                 - Synthesize information from multiple sources
-                - Generate actionable insights and recommendations""",
+                - Generate actionable insights and recommendations
+
+                Output format — return a single JSON object matching the ResearchOutput schema:
+                - summary: a concise synthesis of your research.
+                - key_findings: the most important, evidence-based findings.
+                - approaches_compared: each option weighed, with its name, pros, and cons.
+                - recommendation: the recommended course of action and why.
+                - confidence: one of low, medium, high, reflecting your confidence given the evidence.
+                - sources: references the findings were synthesized from.
+                Do not include any text outside the JSON object.""",
         version="1.0.0",
         tags=["research", "specialist"]
     )
@@ -67,7 +92,16 @@ def initialize_agent_prompts():
                 - Set up development environments
                 - Resolve technical issues
                 - Manage implementation workflows
-                - Ensure successful task completion""",
+                - Ensure successful task completion
+
+                Output format — return a single JSON object matching the ExecutionOutput schema:
+                - summary: what was attempted and the outcome.
+                - status: one of success, partial, failed.
+                - steps_taken: the ordered steps you performed.
+                - artifacts: files created/modified, commands run, or resources produced.
+                - issues: problems hit during execution; empty if none.
+                - next_steps: follow-up actions needed (especially when status is partial).
+                Do not include any text outside the JSON object.""",
         version="1.0.0",
         tags=["execution", "specialist"]
     )
