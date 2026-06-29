@@ -67,6 +67,10 @@ USERS = _load_users()
 # Get session service
 session_service = get_session_service()
 
+# Persistent ADK session service for the agent runner. Must outlive individual
+# requests so an existing session_id can be reused across calls.
+adk_session_service = InMemorySessionService()
+
 
 def _check_password(stored: str, supplied: str) -> bool:
     # Constant-time compare. DEMO: plaintext store (see users.yaml).
@@ -265,17 +269,25 @@ async def execute_agent(request: Request, data: AgentExecuteRequest):
     user_id = claims.get("sub", "default")
     logger.info("Agent execution request from %s: %r", user_id, data.prompt[:100])
 
-    # Set up the session + runner.
+    # Set up the session + runner. Reuse the session if a valid id is given,
+    # otherwise create a new one.
     try:
-        session_service = InMemorySessionService()
-        session = await session_service.create_session(
-            app_name="default", user_id="default"
-        )
-        
+        session = None
+        if data.session_id:
+            session = await adk_session_service.get_session(
+                app_name="default",
+                user_id="default",
+                session_id=data.session_id,
+            )
+        if session is None:
+            session = await adk_session_service.create_session(
+                app_name="default", user_id="default"
+            )
+
         runner = Runner(
             agent=agent.root_agent,
             app_name="default",
-            session_service=session_service,
+            session_service=adk_session_service,
         )
     except Exception as exc:
         logger.exception("Failed to set up agent session/runner")
@@ -296,7 +308,7 @@ async def execute_agent(request: Request, data: AgentExecuteRequest):
         ):
             if event.content.parts and event.content.parts[0].text:
                 final_response_text = event.content.parts[0].text
-        return final_response_text
+        return {"session_id": session.id, "res": final_response_text}
     
     except Exception as exc:
         logger.exception("Agent run failed")
