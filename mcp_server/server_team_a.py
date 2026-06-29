@@ -21,6 +21,14 @@ def generate_report(report_type: str, format: str = "json") -> dict:
     }
 
 if __name__ == "__main__":
+    import sys
+    from pathlib import Path
+
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    from observability.logging import setup_logging
+
+    log_file = setup_logging("mcp_team_a")
     port = int(os.getenv("MCP_PORT", 8001))
+    print(f"📝 Logging to {log_file}")
     print(f"🚀 Team A (Analytics) MCP Server starting on http://0.0.0.0:{port}/mcp")
     mcp.run(transport="http", host="0.0.0.0", port=port)

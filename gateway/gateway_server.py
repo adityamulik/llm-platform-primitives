@@ -18,6 +18,10 @@ from google.adk import Runner
 from google.adk.sessions import InMemorySessionService
 from google.genai import types
 
+# Allow running as a script (python gateway/gateway_server.py) by ensuring the
+# repo root is importable so the `app` and `gateway` packages resolve.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from app import agent
 
 from gateway.authz import (  # noqa: E402
@@ -35,10 +39,6 @@ from gateway.models import (
 from gateway.models import LoginRequest
 
 from gateway.helper import _check_password, _claims_from_request
-
-# Allow running as a script (python mcp_auth/auth_server.py) by ensuring the
-# repo root is importable so the `mcp_auth` package resolves.
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 logger = logging.getLogger(__name__)
 
@@ -209,10 +209,10 @@ async def execute_agent(request: Request, data: AgentExecuteRequest):
 
 if __name__ == "__main__":
 
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-    )
+    from observability.logging import setup_logging
+
+    log_file = setup_logging("gateway")
+    print(f"📝 Logging to {log_file}")
     port = int(os.getenv("AUTH_PORT", "7010"))
     host = os.getenv("AUTH_HOST", "0.0.0.0")
     print(f"🚀 Gateway Server starting on http://{host}:{port}")
