@@ -1,15 +1,25 @@
 import contextvars
 import logging
 import os
+from pydantic import ValidationError
 from google.adk.agents import LlmAgent
 from google.adk.apps import App
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools.mcp_tool.mcp_toolset import MCPToolset
 from google.adk.tools.mcp_tool.mcp_session_manager import StreamableHTTPConnectionParams
+from google.adk.plugins import ReflectAndRetryToolPlugin
 from mcp.shared._httpx_utils import create_mcp_http_client
 from intent_classifier import classify_intent
 from prompt_registry import get_prompt
 from observability.token_counter import TokenCostCalculator
+from observability.metrics import metrics, get_current_user
+
+from app.model import (
+    CodebaseOutput,
+    DocsOutput,
+    ExecutionOutput,
+    ResearchOutput,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -98,35 +108,58 @@ class CustomLlmAgent(LlmAgent):
             f"Total: {usage.input_tokens:,} in + {usage.output_tokens:,} out = ${usage.total_cost:.6f}"
         )
         logger.info(f"[{self.name}] Output text: {output_text[:500]}...")
+        # Attribute this model call's usage to the current user (all agents in a
+        # request share one user via the context var set by the gateway).
+        metrics.record_tokens(
+            get_current_user(),
+            input_tokens=usage.input_tokens,
+            output_tokens=usage.output_tokens,
+            cost_usd=usage.total_cost,
+        )
 
-# Individual specialized agents
-docs_agent = CustomLlmAgent(
-    name="docs_agent",
-    model=LiteLlm(model=OLLAMA_MODEL),
-    instruction=get_prompt("docs_agent"),
-    tools=team_toolsets(),
-)
+    async def _run_async_impl(self, ctx):
+        """Run the agent, flagging schema-validation failures as hallucinations.
 
-codebase_agent = CustomLlmAgent(
-    name="codebase_agent",
-    model=LiteLlm(model=OLLAMA_MODEL),
-    instruction=get_prompt("codebase_agent"),
-    tools=team_toolsets(),
-)
+        Both structured-output paths raise pydantic.ValidationError from inside
+        ADK's _run_async_impl: the `set_model_response` tool (output_schema +
+        tools) and the plain-text postprocess (__maybe_save_output_to_state).
+        Wrapping the whole run loop catches either in one place and logs it
+        before re-raising — we observe, we don't suppress.
+        """
+        try:
+            async for event in super()._run_async_impl(ctx):
+                yield event
+        except ValidationError as exc:
+            logger.warning(
+                "[%s] HALLUCINATION: output failed %s validation "
+                "(%d error(s)): %s",
+                self.name,
+                getattr(self.output_schema, "__name__", "?"),
+                exc.error_count(),
+                exc.errors(include_url=False),
+            )
+            metrics.record_hallucination(get_current_user())
+            raise
 
-research_agent = CustomLlmAgent(
-    name="research_agent",
-    model=LiteLlm(model=OLLAMA_MODEL),
-    instruction=get_prompt("research_agent"),
-    tools=team_toolsets(),
-)
+# Individual specialized agents. They share the same wiring (local model + all
+# team MCP toolsets) and differ only by name, prompt, and structured-output
+# schema. output_key derives from the name (docs_agent -> docs_result) so each
+# typed result lands in session state under a predictable key.
+def _specialist(name: str, output_schema) -> CustomLlmAgent:
+    return CustomLlmAgent(
+        name=name,
+        model=LiteLlm(model=OLLAMA_MODEL),
+        instruction=get_prompt(name),
+        output_schema=output_schema,
+        output_key=name.replace("_agent", "_result"),
+        tools=team_toolsets(),
+    )
 
-execution_agent = CustomLlmAgent(
-    name="execution_agent",
-    model=LiteLlm(model=OLLAMA_MODEL),
-    instruction=get_prompt("execution_agent"),
-    tools=team_toolsets(),
-)
+
+docs_agent = _specialist("docs_agent", DocsOutput)
+codebase_agent = _specialist("codebase_agent", CodebaseOutput)
+research_agent = _specialist("research_agent", ResearchOutput)
+execution_agent = _specialist("execution_agent", ExecutionOutput)
 
 # Root agent that coordinates all specialists. The specialists are registered
 # as sub_agents so the root agent can delegate to them (transfer_to_agent);
@@ -143,4 +176,7 @@ root_agent = CustomLlmAgent(
 app = App(
     root_agent=root_agent,
     name="app",
+    plugins=[
+        ReflectAndRetryToolPlugin(max_retries=3),
+    ],
 )

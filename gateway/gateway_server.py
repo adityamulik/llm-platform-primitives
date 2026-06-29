@@ -33,12 +33,11 @@ from gateway.authz import (  # noqa: E402
 from gateway.engine import policy_engine
 from gateway.models import (
     AgentExecuteRequest,
+    LoginRequest,
     TokenRequest,
 )
-
-from gateway.models import LoginRequest
-
 from gateway.helper import _check_password, _claims_from_request
+from observability.metrics import metrics, set_current_user  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +82,15 @@ async def health():
 @app.get("/roles")
 async def roles():
     return {"roles": policy_engine.roles()}
+
+
+@app.get("/metrics")
+async def get_metrics(user: str | None = None):
+    """Per-user runtime metrics: tokens, cost, success/error counts, latency.
+
+    Pass ``?user=<username>`` for one user, or omit for everyone.
+    """
+    return metrics.snapshot(user)
 
 
 @app.post("/login")
@@ -152,59 +160,64 @@ async def execute_agent(request: Request, data: AgentExecuteRequest):
     role = claims.get("role", "")
     logger.info("Agent execution request from %s (role=%s): %r", user_id, role, data.prompt[:100])
 
-    # Thread the caller's token to the MCP servers so they can authorize tools.
+    # Thread the caller's token to the MCP servers so they can authorize tools,
+    # and attribute this request's metrics (tokens/latency/errors) to the user.
     agent.set_request_auth(request.headers.get("Authorization"))
+    set_current_user(user_id)
 
-    # Set up the session + runner. Sessions are namespaced by the authenticated
-    # user_id, so a caller can only reuse their OWN session_id — passing another
-    # user's session_id simply won't resolve. The caller's role is stored in
-    # session state so the agent's before_tool_callback can enforce RBAC.
-    try:
-        session = None
-        if data.session_id:
-            session = await adk_session_service.get_session(
+    # track_request times the body and records success/error + latency for the
+    # user: a normal return counts as success, any raised HTTPException as error.
+    with metrics.track_request(user_id):
+        # Set up the session + runner. Sessions are namespaced by the
+        # authenticated user_id, so a caller can only reuse their OWN session_id
+        # — passing another user's session_id simply won't resolve. The caller's
+        # role is stored in session state so before_tool_callback can enforce RBAC.
+        try:
+            session = None
+            if data.session_id:
+                session = await adk_session_service.get_session(
+                    app_name="default",
+                    user_id=user_id,
+                    session_id=data.session_id,
+                )
+            if session is None:
+                session = await adk_session_service.create_session(
+                    app_name="default",
+                    user_id=user_id,
+                    state={"user_role": role},
+                )
+
+            runner = Runner(
+                agent=agent.root_agent,
                 app_name="default",
-                user_id=user_id,
-                session_id=data.session_id,
+                session_service=adk_session_service,
             )
-        if session is None:
-            session = await adk_session_service.create_session(
-                app_name="default",
-                user_id=user_id,
-                state={"user_role": role},
+        except Exception as exc:
+            logger.exception("Failed to set up agent session/runner")
+            raise HTTPException(
+                status_code=500, detail=f"agent setup failed: {type(exc).__name__}: {exc}"
             )
 
-        runner = Runner(
-            agent=agent.root_agent,
-            app_name="default",
-            session_service=adk_session_service,
-        )
-    except Exception as exc:
-        logger.exception("Failed to set up agent session/runner")
-        raise HTTPException(
-            status_code=500, detail=f"agent setup failed: {type(exc).__name__}: {exc}"
-        )
+        # Run the agent and collect the final text.
+        final_response_text = ""
+        try:
+            content = types.Content(
+                role="user", parts=[types.Part.from_text(text=data.prompt)]
+            )
+            async for event in runner.run_async(
+                user_id=user_id,
+                session_id=session.id,
+                new_message=content,
+            ):
+                if event.content.parts and event.content.parts[0].text:
+                    final_response_text = event.content.parts[0].text
+            return {"session_id": session.id, "res": final_response_text}
 
-    # Run the agent and collect the final text.
-    final_response_text = ""
-    try:        
-        content = types.Content(
-            role="user", parts=[types.Part.from_text(text=data.prompt)]
-        )
-        async for event in runner.run_async(
-            user_id=user_id,
-            session_id=session.id,
-            new_message=content,
-        ):
-            if event.content.parts and event.content.parts[0].text:
-                final_response_text = event.content.parts[0].text
-        return {"session_id": session.id, "res": final_response_text}
-    
-    except Exception as exc:
-        logger.exception("Agent run failed")
-        raise HTTPException(
-            status_code=500, detail=f"agent run failed: {type(exc).__name__}: {exc}"
-        )
+        except Exception as exc:
+            logger.exception("Agent run failed")
+            raise HTTPException(
+                status_code=500, detail=f"agent run failed: {type(exc).__name__}: {exc}"
+            )
 
 
 if __name__ == "__main__":

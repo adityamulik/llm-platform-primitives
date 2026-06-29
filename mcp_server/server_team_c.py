@@ -1,9 +1,9 @@
 # Team C MCP Server - Developer Team
 # Tools: File operations, code management, user/permission management
-import os
 from fastmcp import FastMCP
-from datetime import datetime
 from authz_middleware import AuthzMiddleware
+
+from server_common import serve
 
 mcp = FastMCP("Team C - Developer Server")
 mcp.add_middleware(AuthzMiddleware())  # RBAC enforcement on every tool call
@@ -41,14 +41,4 @@ def query_database(query: str, database: str = "default") -> dict:
     }
 
 if __name__ == "__main__":
-    import sys
-    from pathlib import Path
-
-    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-    from observability.logging import setup_logging
-
-    log_file = setup_logging("mcp_team_c")
-    port = int(os.getenv("MCP_PORT", 8003))
-    print(f"📝 Logging to {log_file}")
-    print(f"🚀 Team C (Developer) MCP Server starting on http://0.0.0.0:{port}/mcp")
-    mcp.run(transport="http", host="0.0.0.0", port=port)
+    serve(mcp, service="mcp_team_c", label="Team C (Developer)", default_port=8003)

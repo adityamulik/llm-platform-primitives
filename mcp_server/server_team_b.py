@@ -1,9 +1,10 @@
 # Team B MCP Server - DevOps/Operations Team
 # Tools: Deployment, service management, configuration updates
-import os
 from fastmcp import FastMCP
 from datetime import datetime
 from authz_middleware import AuthzMiddleware
+
+from server_common import serve
 
 mcp = FastMCP("Team B - DevOps Server")
 mcp.add_middleware(AuthzMiddleware())  # RBAC enforcement on every tool call
@@ -44,14 +45,4 @@ def update_configuration(service: str, config_key: str, config_value: str) -> di
     }
 
 if __name__ == "__main__":
-    import sys
-    from pathlib import Path
-
-    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-    from observability.logging import setup_logging
-
-    log_file = setup_logging("mcp_team_b")
-    port = int(os.getenv("MCP_PORT", 8002))
-    print(f"📝 Logging to {log_file}")
-    print(f"🚀 Team B (DevOps) MCP Server starting on http://0.0.0.0:{port}/mcp")
-    mcp.run(transport="http", host="0.0.0.0", port=port)
+    serve(mcp, service="mcp_team_b", label="Team B (DevOps)", default_port=8002)
