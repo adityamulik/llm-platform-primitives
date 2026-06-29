@@ -33,7 +33,7 @@ async def generate_auth_token(data: LoginRequest):
     return resp.json()
 
 
-@app.post("/run-agent", status_code=201)
+@app.post("/run-agent", status_code=200)
 async def run_agent(request: Request):
     """Verify the caller's token via the gateway, then run the agent through it."""
     auth_header = request.headers.get("Authorization")
