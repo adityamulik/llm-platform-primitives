@@ -55,6 +55,9 @@ cover/
 *.mo
 *.pot
 
+# Per-service flat log files (gateway, demo, mcp_team_*)
+logs/
+
 # Django stuff:
 *.log
 local_settings.py

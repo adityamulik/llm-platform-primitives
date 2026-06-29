@@ -1,16 +1,21 @@
-.PHONY: install run run-all dev test clean clean-pycache help ollama-setup ollama-serve ollama-agent mcp-team-a mcp-team-b mcp-team-c mcp-servers gateway main
+.PHONY: install run run-all kill-all dev test clean clean-pycache help ollama-setup ollama-serve ollama-agent mcp-team-a mcp-team-b mcp-team-c mcp-servers gateway main
 
 # Ports (override on the command line, e.g. `make run-all MAIN_PORT=8080`)
+# Defaults match the "Services & ports" table in the README.
 # NOTE: avoid 7000 — macOS AirPlay Receiver (Control Center) binds it and
 # returns 403 to everything else.
 GATEWAY_PORT ?= 7010
-MAIN_PORT ?= 7000
+MAIN_PORT ?= 7020
+MCP_A_PORT ?= 8001
+MCP_B_PORT ?= 8002
+MCP_C_PORT ?= 8003
 
 help:
 	@echo "Available targets:"
 	@echo "  make install       Install dependencies"
 	@echo "  make run           Run ADK only on http://localhost:3000"
-	@echo "  make run-all       Run gateway + main API + all 3 MCP servers (recommended)"
+	@echo "  make run-all       Run gateway + main API + all 3 MCP servers in the background (recommended)"
+	@echo "  make kill-all      Stop everything started by run-all"
 	@echo "  make dev           Install dependencies and run"
 	@echo "  make test          Run tests"
 	@echo "  make clean         Clean up temporary files"
@@ -42,21 +47,37 @@ run: clean-pycache
 	uv run adk web
 
 run-all: clean-pycache
-	@echo "Starting MCP servers..."
-	uv run python mcp_server/server_team_a.py > /tmp/team_a.log 2>&1 &
-	uv run python mcp_server/server_team_b.py > /tmp/team_b.log 2>&1 &
-	uv run python mcp_server/server_team_c.py > /tmp/team_c.log 2>&1 &
+	@mkdir -p logs
+	@echo "Starting MCP servers (Team A :$(MCP_A_PORT), Team B :$(MCP_B_PORT), Team C :$(MCP_C_PORT))..."
+	@MCP_PORT=$(MCP_A_PORT) uv run python mcp_server/server_team_a.py > logs/mcp_team_a.out 2>&1 & echo $$! > /tmp/team_a.pid
+	@MCP_PORT=$(MCP_B_PORT) uv run python mcp_server/server_team_b.py > logs/mcp_team_b.out 2>&1 & echo $$! > /tmp/team_b.pid
+	@MCP_PORT=$(MCP_C_PORT) uv run python mcp_server/server_team_c.py > logs/mcp_team_c.out 2>&1 & echo $$! > /tmp/team_c.pid
 	@echo "✓ MCP servers started in background"
-	@echo "  Team A logs: tail -f /tmp/team_a.log"
-	@echo "  Team B logs: tail -f /tmp/team_b.log"
-	@echo "  Team C logs: tail -f /tmp/team_c.log"
+	@echo "  Team A logs: tail -f logs/mcp_team_a.log"
+	@echo "  Team B logs: tail -f logs/mcp_team_b.log"
+	@echo "  Team C logs: tail -f logs/mcp_team_c.log"
 	@echo "Starting auth gateway on http://localhost:$(GATEWAY_PORT)..."
-	GATEWAY_PORT=$(GATEWAY_PORT) uv run python gateway/server.py > /tmp/gateway.log 2>&1 &
-	@echo "✓ Gateway started in background (logs: tail -f /tmp/gateway.log)"
+	@AUTH_PORT=$(GATEWAY_PORT) uv run python gateway/gateway_server.py > logs/gateway.out 2>&1 & echo $$! > /tmp/gateway.pid
+	@echo "✓ Gateway started in background (logs: tail -f logs/gateway.log)"
 	@sleep 2
+	@echo "Starting main API on http://localhost:$(MAIN_PORT)..."
+	@GATEWAY_URL=http://localhost:$(GATEWAY_PORT) uv run uvicorn main:app --host 127.0.0.1 --port $(MAIN_PORT) > logs/demo.out 2>&1 & echo $$! > /tmp/main.pid
+	@echo "✓ Main API started in background (logs: tail -f logs/demo.log)"
 	@echo ""
-	@echo "Starting main API on http://localhost:$(MAIN_PORT) (Ctrl-C to stop)..."
-	GATEWAY_URL=http://localhost:$(GATEWAY_PORT) uv run uvicorn main:app --host 127.0.0.1 --port $(MAIN_PORT)
+	@echo "All services are running in the background."
+	@echo "  Stop everything with: make kill-all"
+
+kill-all:
+	@echo "Stopping all services..."
+	@for port in $(GATEWAY_PORT) $(MAIN_PORT) $(MCP_A_PORT) $(MCP_B_PORT) $(MCP_C_PORT); do \
+		pids=$$(lsof -ti tcp:$$port 2>/dev/null); \
+		if [ -n "$$pids" ]; then \
+			echo "  Killing port $$port (PID $$pids)"; \
+			kill $$pids 2>/dev/null || true; \
+		fi; \
+	done
+	@rm -f /tmp/team_a.pid /tmp/team_b.pid /tmp/team_c.pid /tmp/gateway.pid /tmp/main.pid
+	@echo "✓ All services stopped"
 
 dev: install run
 
@@ -83,23 +104,23 @@ ollama-agent:
 	uv run adk run app
 
 mcp-team-a:
-	uv run python mcp_server/server_team_a.py
+	MCP_PORT=$(MCP_A_PORT) uv run python mcp_server/server_team_a.py
 
 mcp-team-b:
-	uv run python mcp_server/server_team_b.py
+	MCP_PORT=$(MCP_B_PORT) uv run python mcp_server/server_team_b.py
 
 mcp-team-c:
-	uv run python mcp_server/server_team_c.py
+	MCP_PORT=$(MCP_C_PORT) uv run python mcp_server/server_team_c.py
 
 gateway:
-	GATEWAY_PORT=$(GATEWAY_PORT) uv run python gateway/server.py
+	AUTH_PORT=$(GATEWAY_PORT) uv run python gateway/gateway_server.py
 
 main:
 	GATEWAY_URL=http://localhost:$(GATEWAY_PORT) uv run uvicorn main:app --host 127.0.0.1 --port $(MAIN_PORT)
 
 mcp-servers:
 	@echo "Starting all team MCP servers in the background..."
-	uv run python mcp_server/server_team_a.py & \
-	uv run python mcp_server/server_team_b.py & \
-	uv run python mcp_server/server_team_c.py & \
+	MCP_PORT=$(MCP_A_PORT) uv run python mcp_server/server_team_a.py & \
+	MCP_PORT=$(MCP_B_PORT) uv run python mcp_server/server_team_b.py & \
+	MCP_PORT=$(MCP_C_PORT) uv run python mcp_server/server_team_c.py & \
 	wait

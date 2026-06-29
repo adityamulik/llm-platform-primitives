@@ -128,11 +128,16 @@ make ollama-serve   # start Ollama (keep running)
 ### Run the full stack
 
 ```bash
-make run-all
+make run-all        # start everything in the background
+make kill-all       # stop everything started by run-all
 ```
 
-This starts the three MCP servers (:8001–:8003), the auth gateway (:7010), and
-the demo app, then streams logs. Individual pieces:
+`make run-all` starts the three MCP servers (:8001–:8003), the auth gateway
+(:7010), and the demo app (:7020) — all in the background — and returns your
+shell immediately. `make kill-all` stops them again (it frees each service's
+port, so it cleans up even if a process was started separately).
+
+Individual pieces:
 
 ```bash
 make gateway        # auth gateway only
@@ -141,6 +146,28 @@ make mcp-team-a     # a single MCP server (also mcp-team-b / mcp-team-c)
 ```
 
 See `make help` for all targets.
+
+### Logs
+
+Because the services run in the background, watch them through the `logs/`
+folder (git-ignored). Each service writes its own structured log file via
+`observability/logging`:
+
+| Service       | Log file               |
+|---------------|------------------------|
+| Demo app      | `logs/demo.log`        |
+| Gateway       | `logs/gateway.log`     |
+| MCP — Team A  | `logs/mcp_team_a.log`  |
+| MCP — Team B  | `logs/mcp_team_b.log`  |
+| MCP — Team C  | `logs/mcp_team_c.log`  |
+
+```bash
+tail -f logs/demo.log       # follow the demo app
+tail -f logs/*.log          # follow everything at once
+```
+
+Raw stdout/stderr for each process is also captured alongside as `logs/*.out`
+(useful if a service crashes before logging is configured).
 
 ### Try it (curl)
 
@@ -190,7 +217,7 @@ mcp_server/
   authz_middleware.py       Per-tool RBAC enforcement (FastMCP middleware)
 intent_classifier/          Keyword-based intent classification
 prompt_registry/            Versioned, named prompts
-observability/              Token counting + cost estimation
+observability/              Token counting + cost estimation; per-service logging (-> logs/)
 ```
 
 ## Built with

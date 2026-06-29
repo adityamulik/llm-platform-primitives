@@ -7,6 +7,12 @@ import uvicorn
 
 
 from gateway.models import LoginRequest
+from observability.logging import setup_logging
+
+# Configure logging at import time: this service is launched via
+# `uvicorn main:app`, so the __main__ block below never runs. This routes the
+# demo app's logs to logs/demo.log.
+setup_logging("demo")
 
 # The auth gateway (gateway/server.py) is the only service that checks
 # credentials and mints tokens. We forward credentials to it and verify the
