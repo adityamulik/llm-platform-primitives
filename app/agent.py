@@ -141,42 +141,25 @@ class CustomLlmAgent(LlmAgent):
             metrics.record_hallucination(get_current_user())
             raise
 
-# Individual specialized agents
-docs_agent = CustomLlmAgent(
-    name="docs_agent",
-    model=LiteLlm(model=OLLAMA_MODEL),
-    instruction=get_prompt("docs_agent"),
-    output_schema=DocsOutput,
-    output_key="docs_result",
-    tools=team_toolsets(),
-)
+# Individual specialized agents. They share the same wiring (local model + all
+# team MCP toolsets) and differ only by name, prompt, and structured-output
+# schema. output_key derives from the name (docs_agent -> docs_result) so each
+# typed result lands in session state under a predictable key.
+def _specialist(name: str, output_schema) -> CustomLlmAgent:
+    return CustomLlmAgent(
+        name=name,
+        model=LiteLlm(model=OLLAMA_MODEL),
+        instruction=get_prompt(name),
+        output_schema=output_schema,
+        output_key=name.replace("_agent", "_result"),
+        tools=team_toolsets(),
+    )
 
-codebase_agent = CustomLlmAgent(
-    name="codebase_agent",
-    model=LiteLlm(model=OLLAMA_MODEL),
-    instruction=get_prompt("codebase_agent"),
-    output_schema=CodebaseOutput,
-    output_key="codebase_result",
-    tools=team_toolsets(),
-)
 
-research_agent = CustomLlmAgent(
-    name="research_agent",
-    model=LiteLlm(model=OLLAMA_MODEL),
-    instruction=get_prompt("research_agent"),
-    output_schema=ResearchOutput,
-    output_key="research_result",
-    tools=team_toolsets(),
-)
-
-execution_agent = CustomLlmAgent(
-    name="execution_agent",
-    model=LiteLlm(model=OLLAMA_MODEL),
-    instruction=get_prompt("execution_agent"),
-    output_schema=ExecutionOutput,
-    output_key="execution_result",
-    tools=team_toolsets(),
-)
+docs_agent = _specialist("docs_agent", DocsOutput)
+codebase_agent = _specialist("codebase_agent", CodebaseOutput)
+research_agent = _specialist("research_agent", ResearchOutput)
+execution_agent = _specialist("execution_agent", ExecutionOutput)
 
 # Root agent that coordinates all specialists. The specialists are registered
 # as sub_agents so the root agent can delegate to them (transfer_to_agent);

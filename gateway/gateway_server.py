@@ -33,13 +33,11 @@ from gateway.authz import (  # noqa: E402
 from gateway.engine import policy_engine
 from gateway.models import (
     AgentExecuteRequest,
+    LoginRequest,
     TokenRequest,
 )
-from observability.metrics import metrics, set_current_user  # noqa: E402
-
-from gateway.models import LoginRequest
-
 from gateway.helper import _check_password, _claims_from_request
+from observability.metrics import metrics, set_current_user  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
