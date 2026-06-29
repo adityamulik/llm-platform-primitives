@@ -101,12 +101,16 @@ execution_agent = CustomLlmAgent(
     tools=team_toolsets(),
 )
 
-# Root agent that coordinates all specialists
+# Root agent that coordinates all specialists. The specialists are registered
+# as sub_agents so the root agent can delegate to them (transfer_to_agent);
+# the MCP tools live on those specialists, so without this wiring they are
+# never reachable.
 root_agent = CustomLlmAgent(
     name="root_agent",
     model=LiteLlm(model=OLLAMA_MODEL),
     instruction=get_prompt("root_agent"),
     tools=[classify_intent], # classify intent at every turn
+    sub_agents=[docs_agent, codebase_agent, research_agent, execution_agent],
 )
 
 app = App(
