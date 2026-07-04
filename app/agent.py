@@ -81,9 +81,10 @@ def team_toolsets() -> list[MCPToolset]:
 
 class CustomLlmAgent(LlmAgent):
     
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, max_validation_retries: int = 3, **kwargs):
         super().__init__(*args, **kwargs)
         self._token_calculator = TokenCostCalculator(OLLAMA_MODEL)
+        self.max_validation_retries = max_validation_retries
         # Bind callbacks properly
         self.before_model_callback = self._before_model_callback_impl
         self.after_model_callback = self._after_model_callback_impl
@@ -96,7 +97,7 @@ class CustomLlmAgent(LlmAgent):
         input_cost = self._token_calculator._price(input_tokens, 0, source="estimated")
         logger.info(
             f"[{self.name}] INPUT → {input_tokens:,} tokens | "
-            f"Estimated: ${input_cost.input_cost:.6f}"
+            f"Estimated: ${input_cost:.6f}"
         )
     
     def _after_model_callback_impl(self, callback_context, llm_response) -> None:
@@ -118,28 +119,37 @@ class CustomLlmAgent(LlmAgent):
         )
 
     async def _run_async_impl(self, ctx):
-        """Run the agent, flagging schema-validation failures as hallucinations.
+        """Run the agent with retry logic for validation errors.
 
         Both structured-output paths raise pydantic.ValidationError from inside
         ADK's _run_async_impl: the `set_model_response` tool (output_schema +
         tools) and the plain-text postprocess (__maybe_save_output_to_state).
-        Wrapping the whole run loop catches either in one place and logs it
-        before re-raising — we observe, we don't suppress.
+        
+        This wrapper retries on validation errors up to max_validation_retries times,
+        logging each failure before retrying.
         """
-        try:
-            async for event in super()._run_async_impl(ctx):
-                yield event
-        except ValidationError as exc:
-            logger.warning(
-                "[%s] HALLUCINATION: output failed %s validation "
-                "(%d error(s)): %s",
-                self.name,
-                getattr(self.output_schema, "__name__", "?"),
-                exc.error_count(),
-                exc.errors(include_url=False),
-            )
-            metrics.record_hallucination(get_current_user())
-            raise
+        for attempt in range(self.max_validation_retries):
+            try:
+                async for event in super()._run_async_impl(ctx):
+                    yield event
+                return  # Success
+            except ValidationError as exc:
+                is_last_attempt = attempt == self.max_validation_retries - 1
+                logger.warning(
+                    "[%s] VALIDATION ERROR (attempt %d/%d): output failed %s validation "
+                    "(%d error(s)): %s%s",
+                    self.name,
+                    attempt + 1,
+                    self.max_validation_retries,
+                    getattr(self.output_schema, "__name__", "?"),
+                    exc.error_count(),
+                    exc.errors(include_url=False),
+                    " — retrying..." if not is_last_attempt else " — max retries exceeded",
+                )
+                metrics.record_hallucination(get_current_user())
+                
+                if is_last_attempt:
+                    raise  # Re-raise on last attempt
 
 # Resolve an agent's instruction from the registry at run time (ADK
 # InstructionProvider) rather than capturing a fixed string at construction, so
