@@ -84,17 +84,28 @@ class CustomLlmAgent(LlmAgent):
     def __init__(self, *args, max_validation_retries: int = 3, **kwargs):
         super().__init__(*args, **kwargs)
         self._token_calculator = TokenCostCalculator(OLLAMA_MODEL)
-        self.max_validation_retries = max_validation_retries
+        # LlmAgent is a pydantic model with ``extra="forbid"``, so only private
+        # (underscore-prefixed) attributes can be set on an instance. Keep this
+        # private and expose it via a read-only property below.
+        self._max_validation_retries = max_validation_retries
         # Bind callbacks properly
         self.before_model_callback = self._before_model_callback_impl
         self.after_model_callback = self._after_model_callback_impl
         self._last_input_text = ""  # Store input for use in after callback
 
+    @property
+    def max_validation_retries(self) -> int:
+        """How many times structured-output validation is retried before failing."""
+        return self._max_validation_retries
+
     def _before_model_callback_impl(self, callback_context, llm_request) -> None:
         """Log input tokens and estimated cost before model call."""
         self._last_input_text = str(llm_request.contents)
         input_tokens = self._token_calculator.count_tokens(self._last_input_text)
-        input_cost = self._token_calculator._price(input_tokens, 0, source="estimated")
+        # _price returns a TokenUsage; the estimated input cost is its total_cost.
+        input_cost = self._token_calculator._price(
+            input_tokens, 0, source="estimated"
+        ).total_cost
         logger.info(
             f"[{self.name}] INPUT → {input_tokens:,} tokens | "
             f"Estimated: ${input_cost:.6f}"

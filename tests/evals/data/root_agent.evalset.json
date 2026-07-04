@@ -1,0 +1,151 @@
+{
+  "eval_set_id": "root_agent_routing_evalset",
+  "name": "Root agent intent-routing eval set",
+  "description": "Checks that the root coordinator classifies intent (via the classify_intent tool) before answering, and delegates to the correct specialist for representative requests. Requires a running Ollama model and the three team MCP servers.",
+  "eval_cases": [
+    {
+      "eval_id": "docs_lookup_routes_to_docs_agent",
+      "conversation": [
+        {
+          "invocation_id": "docs-001",
+          "user_content": {
+            "parts": [
+              {
+                "text": "Write documentation explaining the FastAPI routing API."
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "text": "Routed to the documentation specialist, which grounds its answer in the FastAPI docs."
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "name": "classify_intent",
+                "args": {
+                  "user_input": "Write documentation explaining the FastAPI routing API."
+                }
+              },
+              {
+                "name": "transfer_to_agent",
+                "args": {
+                  "agent_name": "docs_agent"
+                }
+              }
+            ],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "app",
+        "user_id": "eval_user",
+        "state": {
+          "user_role": "viewer"
+        }
+      }
+    },
+    {
+      "eval_id": "code_review_routes_to_codebase_agent",
+      "conversation": [
+        {
+          "invocation_id": "code-001",
+          "user_content": {
+            "parts": [
+              {
+                "text": "Analyze and refactor this function to improve its architecture."
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "text": "Routed to the codebase analysis specialist, which reviews the code and suggests refactors."
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "name": "classify_intent",
+                "args": {
+                  "user_input": "Analyze and refactor this function to improve its architecture."
+                }
+              },
+              {
+                "name": "transfer_to_agent",
+                "args": {
+                  "agent_name": "codebase_agent"
+                }
+              }
+            ],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "app",
+        "user_id": "eval_user",
+        "state": {
+          "user_role": "developer"
+        }
+      }
+    },
+    {
+      "eval_id": "research_request_routes_to_research_agent",
+      "conversation": [
+        {
+          "invocation_id": "research-001",
+          "user_content": {
+            "parts": [
+              {
+                "text": "Research and compare the best practices for caching strategies."
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "text": "Routed to the research specialist, which compares approaches and gives an evidence-based recommendation."
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "name": "classify_intent",
+                "args": {
+                  "user_input": "Research and compare the best practices for caching strategies."
+                }
+              },
+              {
+                "name": "transfer_to_agent",
+                "args": {
+                  "agent_name": "research_agent"
+                }
+              }
+            ],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "app",
+        "user_id": "eval_user",
+        "state": {
+          "user_role": "analyst"
+        }
+      }
+    }
+  ]
+}

@@ -101,8 +101,8 @@ async def get_metrics(user: str | None = None):
 @app.get("/prompts")
 async def get_prompts(request: Request):
     """List every prompt with its active version and full version history."""
-    _require_admin(request)
-    return {"prompts": [_prompt_state(name) for name in list_prompts()]}
+    await _require_admin(request)
+    return {"prompts": [await _prompt_state(name) for name in list_prompts()]}
 
 
 @app.post("/prompts/{name}/rollback")
@@ -112,7 +112,7 @@ async def rollback_prompt_version(name: str, data: PromptRollbackRequest, reques
     History is preserved; this only repoints which version the agents use on
     their next request. Returns the prompt's new active version.
     """
-    claims = _require_admin(request)
+    claims = await _require_admin(request)
     try:
         new_active = rollback_prompt(name, data.version)
     except KeyError as exc:
@@ -120,7 +120,7 @@ async def rollback_prompt_version(name: str, data: PromptRollbackRequest, reques
     logger.info(
         "Prompt %r rolled back to %s by %s", name, new_active, claims.get("sub")
     )
-    return _prompt_state(name)
+    return await _prompt_state(name)
 
 
 @app.post("/auth-token")
@@ -129,7 +129,7 @@ async def login(data: LoginRequest):
     password = data.password
 
     user = USERS.get(username)
-    if not user or not _check_password(user.get("password", ""), password):
+    if not user or not await _check_password(user.get("password", ""), password):
         # Same response for unknown user and bad password (no enumeration).
         raise HTTPException(status_code=401, detail="invalid credentials")
 

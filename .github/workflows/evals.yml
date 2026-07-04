@@ -1,0 +1,81 @@
+name: Agent Evals (ADK)
+
+# Opt-in, manually triggered. Unlike the hermetic CI suite, this drives the real
+# multi-agent system, so it needs a live model (Ollama) and the team MCP servers.
+# Pulling the model is slow (~GBs), which is why this is not on push/PR.
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: "Ollama model tag to serve"
+        default: "llama3.1"
+        required: false
+      num_runs:
+        description: "Runs per eval case (averaged for the success bar)"
+        default: "2"
+        required: false
+
+jobs:
+  evals:
+    name: ADK agent evaluations (>=80% tool-trajectory)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      TOKENIZERS_PARALLELISM: "false"
+      RUN_ADK_EVALS: "1"
+      ADK_EVAL_NUM_RUNS: ${{ github.event.inputs.num_runs }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      - name: Sync dependencies (dev + eval groups)
+        run: uv sync --group dev --group eval
+
+      - name: Install and start Ollama
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          ollama serve > ollama.log 2>&1 &
+          # Wait for the daemon to accept connections.
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:11434/api/tags && break
+            sleep 2
+          done
+
+      - name: Pull model
+        run: ollama pull "${{ github.event.inputs.model }}"
+
+      - name: Start team MCP servers
+        run: |
+          mkdir -p logs
+          MCP_PORT=8001 uv run python mcp_server/server_team_a.py > logs/mcp_a.out 2>&1 &
+          MCP_PORT=8002 uv run python mcp_server/server_team_b.py > logs/mcp_b.out 2>&1 &
+          MCP_PORT=8003 uv run python mcp_server/server_team_c.py > logs/mcp_c.out 2>&1 &
+          # Wait for each /mcp endpoint (406 on a plain GET means it's up).
+          for port in 8001 8002 8003; do
+            for i in $(seq 1 30); do
+              code=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:$port/mcp" || true)
+              [ "$code" = "406" ] && break
+              sleep 2
+            done
+          done
+
+      - name: Run agent evals (enforces test_config.json thresholds)
+        run: uv run pytest -m eval --no-cov -v
+
+      - name: Upload server logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-logs
+          path: |
+            logs/
+            ollama.log
+          if-no-files-found: warn

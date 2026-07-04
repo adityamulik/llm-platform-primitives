@@ -1,5 +1,9 @@
 # LLM Platform Primitives
 
+[![CI](https://github.com/adityamulik/llm-platform-primitives/actions/workflows/ci.yml/badge.svg)](https://github.com/adityamulik/llm-platform-primitives/actions/workflows/ci.yml)
+[![coverage](https://img.shields.io/badge/coverage-98%25-brightgreen)](#testing--coverage)
+[![coverage gate](https://img.shields.io/badge/coverage%20gate-%E2%89%A580%25-blue)](#testing--coverage)
+
 A learning repository exploring platform-engineering patterns for LLM
 applications: a **secured, multi-agent system** where an authenticated user's
 role decides which tools an agent is allowed to call.
@@ -266,7 +270,99 @@ observability/
   token_counter/            Token counting + cost estimation
   metrics/                  Per-user metrics (tokens, cost, success/error, latency)
   logging/                  Per-service structured logging (-> logs/)
+tests/
+  unit/                     Hermetic unit tests (no network/model/servers)
+  integration/              FastAPI TestClient tests (gateway + demo app)
+  evals/                    ADK agent evaluations (opt-in; see Testing & coverage)
+.github/workflows/ci.yml    CI: pytest + 80% coverage gate
 ```
+
+## Testing & coverage
+
+The test suite lives in `tests/` and is split into fast, hermetic unit +
+integration tests (no network, no model, no live servers) and an opt-in ADK
+agent evaluation.
+
+```bash
+make install     # sync deps (includes the dev group: pytest, pytest-cov, ...)
+make test        # unit + integration tests with coverage + 80% gate
+```
+
+`make test` runs `pytest -m "not eval"`. Coverage is configured in
+`pyproject.toml` and **fails the run below 80%** (`--cov-fail-under=80`). Current
+coverage is **~98%**:
+
+```
+Name                                    Stmts   Miss Branch BrPart  Cover
+-----------------------------------------------------------------------------
+app/agent.py                               76      0      8      1    99%
+gateway/authz.py                           39      0      4      0   100%
+gateway/engine.py                          67      0     22      0   100%
+gateway/gateway_server.py                 106      4     12      3    94%
+main.py                                    43      0     10      0   100%
+mcp_server/authz_middleware.py             26      0      2      0   100%
+observability/metrics/collector.py         91      0      8      0   100%
+observability/token_counter/calculator.py  40      0      0      0   100%
+prompt_registry/registry.py                78      2     28      2    96%
+... (full report printed by `make test`)
+-----------------------------------------------------------------------------
+TOTAL                                     845     13    116      6    98%
+```
+
+What's covered:
+
+| Area | Tests |
+|------|-------|
+| RBAC policy engine, JWT issue/verify, request helpers, models | `tests/unit/test_engine.py`, `test_authz.py`, `test_helper.py`, `test_models.py` |
+| Intent classification, prompt registry + rollback | `tests/unit/test_intent_classifier.py`, `test_prompt_registry.py` |
+| Token counting/costing, per-user metrics, logging | `tests/unit/test_token_counter.py`, `test_metrics.py`, `test_logging.py` |
+| Specialist output schemas, agent wiring/callbacks/retry loop | `tests/unit/test_app_model.py`, `test_agent.py` |
+| MCP team tools + `AuthzMiddleware` RBAC enforcement | `tests/unit/test_mcp_servers.py` |
+| Gateway + demo-app HTTP endpoints (FastAPI `TestClient`) | `tests/integration/` |
+
+The heavy dependency (a live model + MCP servers) is only needed for the
+[agent evals](#agent-evaluations-adk); the unit/integration tests fake it (the
+gateway's ADK `Runner` and the demo app's httpx client are replaced), so the
+whole suite runs in a few seconds on a laptop or in CI.
+
+### Agent evaluations (ADK)
+
+Following the [ADK evaluation guide](https://adk.dev/evaluate/), the root
+coordinator's routing is checked against an eval set:
+
+```
+tests/evals/
+  data/root_agent.evalset.json   # EvalSet: prompts + expected tool trajectory
+  data/test_config.json          # criteria/thresholds (tool_trajectory_avg_score >= 0.8)
+  test_agent_eval.py             # AgentEvaluator harness + always-on schema guard
+```
+
+The eval encodes the designed routing contract — the root agent should
+`classify_intent` and then `transfer_to_agent` to the correct specialist — and
+enforces an **80% tool-trajectory success bar** via `test_config.json`.
+
+Because it drives the *real* agent, it needs the ADK eval extra, a running model
+(Ollama `llama3.1`), and the team MCP servers. It is therefore **opt-in** and
+skipped by default (so CI stays hermetic):
+
+```bash
+uv sync --group eval        # adds google-adk[eval]
+make ollama-serve           # terminal 1: local model
+make run-all                # terminal 2: MCP servers (+ gateway/app)
+RUN_ADK_EVALS=1 make eval    # terminal 3: pytest -m eval
+```
+
+> Tool-trajectory scoring is an exact-sequence match, so it is a meaningful gate
+> only for a model that follows the contract reliably; point the agents at a
+> stronger model to use it as a hard gate. A lightweight, always-on test still
+> validates that the eval fixtures stay well-formed in normal CI.
+
+## Continuous integration
+
+`.github/workflows/ci.yml` runs on every push and pull request: it syncs deps
+with `uv`, runs `pytest -m "not eval"`, and enforces the **80% coverage gate**.
+The job fails if any test fails or coverage drops below 80%, and it uploads the
+coverage report as a build artifact.
 
 ## Built with
 
