@@ -1,4 +1,4 @@
-.PHONY: install run run-all kill-all dev test clean clean-pycache help ollama-setup ollama-serve ollama-agent mcp-team-a mcp-team-b mcp-team-c mcp-servers gateway main
+.PHONY: install run run-all kill-all dev test test-cov eval clean clean-pycache help ollama-setup ollama-serve ollama-agent mcp-team-a mcp-team-b mcp-team-c mcp-servers gateway main
 
 # Ports (override on the command line, e.g. `make run-all MAIN_PORT=8080`)
 # Defaults match the "Services & ports" table in the README.
@@ -82,7 +82,15 @@ kill-all:
 dev: install run
 
 test:
-	uv run pytest tests/
+	uv run pytest -m "not eval"
+
+# Alias: `make test` already produces a coverage report + 80% gate (see pyproject).
+test-cov: test
+
+# ADK agent evaluations (https://adk.dev/evaluate/). Requires Ollama serving
+# llama3.1 (make ollama-serve) and the team MCP servers (make run-all).
+eval:
+	uv run pytest -m eval --no-cov -v
 
 clean:
 	find . -type d -name __pycache__ -exec rm -rf {} +

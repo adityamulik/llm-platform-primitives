@@ -17,3 +17,65 @@ dependencies = [
     "flask-cors>=4.0.0",
     "pyjwt>=2.8.0",
 ]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*", "gateway*", "intent_classifier*", "prompt_registry*", "observability*", "mcp_server*"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=5.0.0",
+]
+# Optional extras needed only to run the ADK agent evals (`make eval`). The ADK
+# `eval` extra provides the local eval service + metric evaluators (tool
+# trajectory / ROUGE response match). Those metrics run locally; no paid Vertex
+# service is called for them.
+eval = [
+    "google-adk[eval]",
+]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--cov=app",
+    "--cov=gateway",
+    "--cov=intent_classifier",
+    "--cov=prompt_registry",
+    "--cov=observability",
+    "--cov=mcp_server",
+    "--cov=main",
+    "--cov-report=term-missing",
+    "--cov-report=xml",
+    "--cov-fail-under=80",
+]
+markers = [
+    "eval: ADK agent evaluations (require a running Ollama model; skipped by default in CI)",
+]
+
+[tool.coverage.run]
+branch = true
+omit = [
+    "*/tests/*",
+    "*/.venv/*",
+    "mcp_server/.venv/*",
+]
+
+[tool.coverage.report]
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+    "\\.\\.\\.",
+    "if TYPE_CHECKING:",
+]

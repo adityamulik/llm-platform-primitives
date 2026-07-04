@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+# Cancel superseded runs on the same ref.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: tests + coverage gate (>=80%)
+    runs-on: ubuntu-latest
+    env:
+      # Avoid HuggingFace tokenizers spawning threads / noisy warnings in CI.
+      TOKENIZERS_PARALLELISM: "false"
+      HF_HUB_DISABLE_TELEMETRY: "1"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      - name: Sync dependencies (incl. dev group)
+        run: uv sync --group dev
+
+      # Warm the tokenizer caches (tiktoken + HuggingFace) so a transient hub
+      # hiccup doesn't flake the coverage run. Retried a couple of times.
+      - name: Pre-warm tokenizers
+        run: |
+          cat > /tmp/warm.py <<'PY'
+          from observability.token_counter.algorithms import (
+              BPETokenizer,
+              UnigramTokenizer,
+              WordPieceTokenizer,
+          )
+          for T in (BPETokenizer, WordPieceTokenizer, UnigramTokenizer):
+              T().count("warm up the tokenizer cache")
+          print("tokenizers warmed")
+          PY
+          for attempt in 1 2 3; do
+            uv run python /tmp/warm.py && break
+            echo "attempt $attempt failed; retrying..." && sleep 5
+          done
+
+      - name: Run tests with coverage (80% gate)
+        # The gate itself lives in pyproject.toml (--cov-fail-under=80). Evals
+        # are excluded here (they need a live model); see the eval workflow.
+        run: uv run pytest -m "not eval"
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.xml
+          if-no-files-found: warn
