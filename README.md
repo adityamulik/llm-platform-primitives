@@ -373,4 +373,4 @@ coverage report as a build artifact.
 
 ## License
 
-MIT
+ Apache 2.0 License
